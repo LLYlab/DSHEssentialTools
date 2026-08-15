@@ -7,6 +7,7 @@ export default function () {
     apply(ctx) {
       const slots = ctx.get('slots')
       const sessionsSvc = ctx.get('sessions')
+      const workspacesSvc = ctx.get('workspaces')
       const themeSvc = ctx.get('theme')
       if (slots === undefined) return
 
@@ -79,18 +80,24 @@ export default function () {
       '.lval5-act:hover{color:#4d6bfe;background:rgba(77,107,254,.08)}' +
       '.lval5-act:disabled{opacity:.4;cursor:default}' +
       '.lval6-list{display:flex;flex-direction:column;gap:2px}' +
-      '.lval6-sess{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
+      '.lval6-sess{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
       '.lval6-sess:hover{background:var(--dsw-alias-bg-layer-2)}' +
       '.lval6-sess-cur{background:rgba(77,107,254,.10);box-shadow:inset 2px 0 0 #4d6bfe}' +
       '.lval6-sess-cur:hover{background:rgba(77,107,254,.16)}' +
-      '.lval6-sess-ico{width:30px;height:30px;border-radius:9px;background:var(--dsw-alias-bg-layer-2);display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:none}' +
+      '.lval6-chev{width:16px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--dsw-alias-label-secondary);cursor:pointer;flex:none;border-radius:4px}' +
+      '.lval6-chev:hover{color:#4d6bfe}' +
+      '.lval6-chev-none{visibility:hidden}' +
+      '.lval6-sess-ico{width:28px;height:28px;border-radius:9px;background:var(--dsw-alias-bg-layer-2);display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex:none}' +
       '.lval6-sess-main{flex:1;min-width:0}' +
-      '.lval6-sess-title{font-size:13.5px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}' +
-      '.lval6-sess-time{font-size:11.5px;color:var(--dsw-alias-label-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.lval6-sess-acts{display:none;align-items:center;gap:4px;flex:none;padding-left:4px}' +
+      '.lval6-sess-title{font-size:13px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}' +
+      '.lval6-sess-time{font-size:11px;color:var(--dsw-alias-label-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.lval6-sess-acts{display:none;align-items:center;gap:2px;flex:none;padding-left:2px}' +
       '.lval6-sess:hover .lval6-sess-acts{display:inline-flex}' +
       '.lval6-act{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;border-radius:6px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1}' +
       '.lval6-act:hover{color:#4d6bfe;background:rgba(77,107,254,.10)}' +
+      '.lval6-act-del:hover{color:#f87171;background:rgba(248,113,113,.10)}' +
+      '.lval6-act-del-armed{color:#fff;background:#f87171;width:auto;padding:0 8px;font-size:11px}' +
+      '.lval6-act-del-armed:hover{color:#fff;background:#ef4444}' +
       '.lval6-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:999px;padding:5px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
       '.lval6-search-input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px}' +
       '.lval6-search-input::placeholder{color:var(--dsw-alias-label-secondary)}' +
@@ -275,9 +282,25 @@ export default function () {
         const [sessions, setSessions] = React.useState([])
         const [sessLoading, setSessLoading] = React.useState(true)
         const [sessQuery, setSessQuery] = React.useState('')
+        const [expanded, setExpanded] = React.useState({})
+        const [delId, setDelId] = React.useState(null)
         const [editId, setEditId] = React.useState(null)
         const [editTitle, setEditTitle] = React.useState('')
         const [sessMsg, setSessMsg] = React.useState(null)
+
+        React.useEffect(function () {
+          if (curId && sessions.length > 0) {
+            const byId = {}
+            for (const s of sessions) byId[s.id] = s
+            const ex = {}
+            let c = curId
+            while (c && byId[c]) {
+              ex[c] = 1
+              c = byId[c].parent
+            }
+            setExpanded(ex)
+          }
+        }, [curId])
 
         React.useEffect(function () {
           let alive = true
@@ -452,7 +475,25 @@ export default function () {
           })
         }
 
-        const saveRename = (id) => {
+        const deleteSession = (id) => {
+        if (delId === id) {
+          setDelId(null)
+          if (!workspacesSvc) {
+            setSessMsg({ ok: false, text: '工作区服务不可用' })
+            return
+          }
+          setSessMsg(null)
+          workspacesSvc.archiveSession(id).then(function () {
+            loadSessions()
+          }).catch(function (e) {
+            setSessMsg({ ok: false, text: '✗ 删除失败：' + String(e && e.message ? e.message : e) })
+          })
+        } else {
+          setDelId(id)
+        }
+      }
+
+      const saveRename = (id) => {
           setSessMsg(null)
           host.call('lval-session-rename', { id: id, title: editTitle }).then(function (r) {
             if (r && r.ok) {
@@ -495,9 +536,29 @@ export default function () {
         const shown = q === '' ? sessions : sessions.filter(function (s) {
           return ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.id || '').toLowerCase().indexOf(q) !== -1)
         })
-        const sessRows = shown.map(function (s) {
+        const byId = {}
+        for (const s of shown) byId[s.id] = s
+        const childrenOf = {}
+        for (const s of shown) {
+          const p = s.parent
+          if (p && byId[p]) {
+            if (!childrenOf[p]) childrenOf[p] = []
+            childrenOf[p].push(s)
+          }
+        }
+        for (const k in childrenOf) {
+          childrenOf[k].sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0) })
+        }
+        const roots = shown.filter(function (s) { return !s.parent || !byId[s.parent] })
+        roots.sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0) })
+
+        const renderNode = (s, depth) => {
+          const kids = childrenOf[s.id] || []
+          const isOpen = !!expanded[s.id]
+          const isCur = s.id === curId
+          const armed = delId === s.id
           if (editId === s.id) {
-            return React.createElement('div', { key: s.id, className: 'lval6-sess' },
+            return React.createElement('div', { key: s.id, className: 'lval6-sess', style: { paddingLeft: 10 + depth * 18 } },
               React.createElement('input', {
                 className: 'lval6-input',
                 value: editTitle,
@@ -507,12 +568,24 @@ export default function () {
               React.createElement('button', { className: 'lval6-btn-ghost', onClick: function () { setEditId(null) } }, '取消')
             )
           }
-          const isCur = curId === s.id
-          return React.createElement('div', {
+          const row = React.createElement('div', {
             key: s.id,
             className: 'lval6-sess' + (isCur ? ' lval6-sess-cur' : ''),
+            style: { paddingLeft: 10 + depth * 18 },
             onClick: function () { openSession(s.id) },
           },
+            kids.length > 0
+              ? React.createElement('span', {
+                  className: 'lval6-chev',
+                  onClick: function (e) {
+                    e.stopPropagation()
+                    const ex = Object.assign({}, expanded)
+                    if (ex[s.id]) delete ex[s.id]
+                    else ex[s.id] = 1
+                    setExpanded(ex)
+                  },
+                }, isOpen ? '▾' : '▸')
+              : React.createElement('span', { className: 'lval6-chev lval6-chev-none' }, '▸'),
             React.createElement('span', { className: 'lval6-sess-ico' }, '💬'),
             React.createElement('div', { className: 'lval6-sess-main' },
               React.createElement('div', { className: 'lval6-sess-title' }, s.title),
@@ -535,10 +608,24 @@ export default function () {
                   e.stopPropagation()
                   forkSession(s.id)
                 },
-              }, '⧉')
+              }, '⧉'),
+              React.createElement('button', {
+                className: 'lval6-act lval6-act-del' + (armed ? ' lval6-act-del-armed' : ''),
+                title: '删除（归档）',
+                onClick: function (e) {
+                  e.stopPropagation()
+                  deleteSession(s.id)
+                },
+              }, armed ? '删除?' : '🗑')
             )
           )
-        })
+          if (!kids.length) return row
+          return React.createElement(React.Fragment, { key: s.id },
+            row,
+            isOpen ? kids.map(function (k) { return renderNode(k, depth + 1) }) : null
+          )
+        }
+        const treeRows = roots.map(function (r) { return renderNode(r, 0) })
 
         return React.createElement('div', { className: 'lval3-root' },
           React.createElement('div', { className: 'lval3-toolbar' },
@@ -641,7 +728,7 @@ export default function () {
                           ? React.createElement('div', { className: 'lval3-empty' }, '加载会话列表…')
                           : shown.length === 0
                             ? React.createElement('div', { className: 'lval3-empty' }, sessions.length === 0 ? '暂无会话记录' : '没有匹配的会话')
-                            : React.createElement('div', { className: 'lval6-list' }, sessRows)
+                            : React.createElement('div', { className: 'lval6-list' }, treeRows)
                       )
                 )
               )
