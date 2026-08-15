@@ -79,26 +79,26 @@ export default function () {
       '.lval5-act{display:inline-flex;align-items:center;gap:4px;background:none;border:none;border-radius:6px;color:#86909c;cursor:pointer;font:inherit;font-size:11.5px;padding:3px 8px;line-height:1.5}' +
       '.lval5-act:hover{color:#4d6bfe;background:rgba(77,107,254,.08)}' +
       '.lval5-act:disabled{opacity:.4;cursor:default}' +
-      '.lval6-list{display:flex;flex-direction:column;gap:2px}' +
-      '.lval6-sess{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
+      '.lval6-list{display:flex;flex-direction:column;gap:1px}' +
+      '.lval6-sess{position:relative;display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:8px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
       '.lval6-sess:hover{background:var(--dsw-alias-bg-layer-2)}' +
-      '.lval6-sess-cur{background:rgba(77,107,254,.10);box-shadow:inset 2px 0 0 #4d6bfe}' +
+      '.lval6-sess-cur{background:rgba(77,107,254,.10)}' +
       '.lval6-sess-cur:hover{background:rgba(77,107,254,.16)}' +
       '.lval6-chev{width:16px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--dsw-alias-label-secondary);cursor:pointer;flex:none;border-radius:4px}' +
       '.lval6-chev:hover{color:#4d6bfe}' +
       '.lval6-chev-none{visibility:hidden}' +
-      '.lval6-sess-ico{width:28px;height:28px;border-radius:9px;background:var(--dsw-alias-bg-layer-2);display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex:none}' +
-      '.lval6-sess-main{flex:1;min-width:0}' +
-      '.lval6-sess-title{font-size:13px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}' +
-      '.lval6-sess-time{font-size:11px;color:var(--dsw-alias-label-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.lval6-sess-acts{display:none;align-items:center;gap:2px;flex:none;padding-left:2px}' +
-      '.lval6-sess:hover .lval6-sess-acts{display:inline-flex}' +
-      '.lval6-act{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;border-radius:6px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1}' +
-      '.lval6-act:hover{color:#4d6bfe;background:rgba(77,107,254,.10)}' +
-      '.lval6-act-del:hover{color:#f87171;background:rgba(248,113,113,.10)}' +
-      '.lval6-act-del-armed{color:#fff;background:#f87171;width:auto;padding:0 8px;font-size:11px}' +
-      '.lval6-act-del-armed:hover{color:#fff;background:#ef4444}' +
-      '.lval6-group{display:flex;align-items:center;gap:6px;padding:7px 8px 3px;cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:11.5px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;user-select:none}' +
+      '.lval6-sess-title{flex:1;min-width:0;font-size:13px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}' +
+      '.lval6-sess-cur .lval6-sess-title{color:#4d6bfe}' +
+      '.lval6-dots{display:none;align-items:center;justify-content:center;width:26px;height:26px;background:none;border:none;border-radius:6px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:17px;line-height:1;flex:none}' +
+      '.lval6-sess:hover .lval6-dots{display:inline-flex}' +
+      '.lval6-dots:hover{background:rgba(0,0,0,.06)}' +
+      '.lval6-dots-armed{display:inline-flex;color:#fff;background:#f87171;width:auto;padding:0 9px;font-size:11px}' +
+      '.lval6-dots-armed:hover{background:#ef4444}' +
+      '.lval6-menu{position:absolute;right:6px;top:34px;z-index:9997;min-width:132px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:4px;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
+      '.lval6-menu-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--dsw-alias-label-primary);background:none;border:none;text-align:left}' +
+      '.lval6-menu-item:hover{background:var(--dsw-alias-bg-layer-2)}' +
+      '.lval6-menu-item-del:hover{color:#f87171;background:rgba(248,113,113,.10)}' +
+      '.lval6-group{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:11.5px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;user-select:none}' +
       '.lval6-group:hover{color:#4d6bfe}' +
       '.lval6-group-n{font-weight:400;font-size:11px}' +
       '.lval6-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:999px;padding:5px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
@@ -286,8 +286,9 @@ export default function () {
         const [sessLoading, setSessLoading] = React.useState(true)
         const [sessQuery, setSessQuery] = React.useState('')
         const [expanded, setExpanded] = React.useState({})
-        const [groupsOpen, setGroupsOpen] = React.useState({ '今天': true, '昨天': true, '7天内': false, '30天内': false, '更早': false })
+        const [groupsOpen, setGroupsOpen] = React.useState({ '今天': true, '昨天': true, '更早': false })
         const [delId, setDelId] = React.useState(null)
+        const [menuId, setMenuId] = React.useState(null)
         const [editId, setEditId] = React.useState(null)
         const [editTitle, setEditTitle] = React.useState('')
         const [sessMsg, setSessMsg] = React.useState(null)
@@ -562,20 +563,20 @@ export default function () {
           const isCur = s.id === curId
           const armed = delId === s.id
           if (editId === s.id) {
-            return React.createElement('div', { key: s.id, className: 'lval6-sess', style: { paddingLeft: 10 + depth * 18 } },
+            return React.createElement('div', { key: s.id, className: 'lval6-sess', style: { paddingLeft: 12 + depth * 18 } },
               React.createElement('input', {
                 className: 'lval6-input',
                 value: editTitle,
                 onChange: function (e) { setEditTitle(e.target.value) },
               }),
               React.createElement('button', { className: 'lval6-btn', onClick: function () { saveRename(s.id) } }, '确定'),
-              React.createElement('button', { className: 'lval6-btn-ghost', onClick: function () { setEditId(null) } }, '取消')
+              React.createElement('button', { className: 'lval6-btn-ghost', onClick: function () { setEditId(null); setMenuId(null) } }, '取消')
             )
           }
           const row = React.createElement('div', {
             key: s.id,
             className: 'lval6-sess' + (isCur ? ' lval6-sess-cur' : ''),
-            style: { paddingLeft: 10 + depth * 18 },
+            style: { paddingLeft: 12 + depth * 18 },
             onClick: function () { openSession(s.id) },
           },
             kids.length > 0
@@ -590,38 +591,50 @@ export default function () {
                   },
                 }, isOpen ? '▾' : '▸')
               : React.createElement('span', { className: 'lval6-chev lval6-chev-none' }, '▸'),
-            React.createElement('span', { className: 'lval6-sess-ico' }, '💬'),
-            React.createElement('div', { className: 'lval6-sess-main' },
-              React.createElement('div', { className: 'lval6-sess-title' }, s.title),
-              React.createElement('div', { className: 'lval6-sess-time' }, fmtTime(s.createdAt) + (s.live ? ' · 运行中' : ''))
-            ),
-            React.createElement('span', { className: 'lval6-sess-acts' },
-              React.createElement('button', {
-                className: 'lval6-act',
-                title: '重命名',
-                onClick: function (e) {
-                  e.stopPropagation()
-                  setEditId(s.id)
-                  setEditTitle(s.title)
-                },
-              }, '✎'),
-              React.createElement('button', {
-                className: 'lval6-act',
-                title: '复制会话',
-                onClick: function (e) {
-                  e.stopPropagation()
-                  forkSession(s.id)
-                },
-              }, '⧉'),
-              React.createElement('button', {
-                className: 'lval6-act lval6-act-del' + (armed ? ' lval6-act-del-armed' : ''),
-                title: '删除（归档）',
-                onClick: function (e) {
-                  e.stopPropagation()
-                  deleteSession(s.id)
-                },
-              }, armed ? '删除?' : '🗑')
-            )
+            React.createElement('span', { className: 'lval6-sess-title' }, s.title),
+            armed
+              ? React.createElement('button', {
+                  className: 'lval6-dots lval6-dots-armed',
+                  title: '删除（归档）',
+                  onClick: function (e) {
+                    e.stopPropagation()
+                    deleteSession(s.id)
+                  },
+                }, '删除?')
+              : React.createElement('button', {
+                  className: 'lval6-dots',
+                  title: '更多操作',
+                  onClick: function (e) {
+                    e.stopPropagation()
+                    setMenuId(menuId === s.id ? null : s.id)
+                  },
+                }, '⋯'),
+            menuId === s.id
+              ? React.createElement('div', { className: 'lval6-menu', onClick: function (e) { e.stopPropagation() } },
+                  React.createElement('button', {
+                    className: 'lval6-menu-item',
+                    onClick: function () {
+                      setMenuId(null)
+                      setEditId(s.id)
+                      setEditTitle(s.title)
+                    },
+                  }, '✎ 重命名'),
+                  React.createElement('button', {
+                    className: 'lval6-menu-item',
+                    onClick: function () {
+                      setMenuId(null)
+                      forkSession(s.id)
+                    },
+                  }, '⧉ 复制'),
+                  React.createElement('button', {
+                    className: 'lval6-menu-item lval6-menu-item-del',
+                    onClick: function () {
+                      setMenuId(null)
+                      deleteSession(s.id)
+                    },
+                  }, '🗑 删除')
+                )
+              : null
           )
           if (!kids.length) return row
           return React.createElement(React.Fragment, { key: s.id },
@@ -640,11 +653,9 @@ export default function () {
           const days = Math.round((startToday.getTime() - start.getTime()) / 86400000)
           if (days <= 0) return '今天'
           if (days === 1) return '昨天'
-          if (days < 7) return '7天内'
-          if (days < 30) return '30天内'
           return '更早'
         }
-        const groupOrder = ['今天', '昨天', '7天内', '30天内', '更早']
+        const groupOrder = ['今天', '昨天', '更早']
         const rootsByGroup = {}
         for (const r of roots) {
           const g = groupOf(r.createdAt)
@@ -775,7 +786,13 @@ export default function () {
                             ? React.createElement('div', { className: 'lval3-empty' }, sessions.length === 0 ? '暂无会话记录' : '没有匹配的会话')
                             : q !== ''
                               ? React.createElement('div', { className: 'lval6-list' }, treeRows)
-                              : React.createElement('div', { className: 'lval6-list' }, groupSections)
+                              : React.createElement('div', { className: 'lval6-list' }, groupSections),
+                        menuId
+                          ? React.createElement('div', {
+                              style: { position: 'fixed', inset: 0, zIndex: 9995 },
+                              onClick: function () { setMenuId(null) },
+                            })
+                          : null
                       )
                 )
               )
