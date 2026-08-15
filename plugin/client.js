@@ -14,6 +14,22 @@ export default function () {
       const NL = String.fromCharCode(10)
       const NBSP = String.fromCharCode(160)
 
+      const verTreeBus = { open: false, subs: [] }
+      const verTreeOpen = () => verTreeBus.open
+      const verTreeSubscribe = (fn) => {
+        verTreeBus.subs.push(fn)
+        return () => {
+          const i = verTreeBus.subs.indexOf(fn)
+          if (i >= 0) verTreeBus.subs.splice(i, 1)
+        }
+      }
+      const verTreeSet = (v) => {
+        verTreeBus.open = !!v
+        for (const f of verTreeBus.subs) {
+          try { f(verTreeBus.open) } catch (e) { /* ignore */ }
+        }
+      }
+
       styles.insert(
         '.lval3-root{position:fixed;inset:0;z-index:9990;pointer-events:none;font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.5px;color:var(--dsw-alias-label-primary)}' +
         '.lval3-toolbar{position:fixed;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;pointer-events:auto;z-index:9995}' +
@@ -22,14 +38,11 @@ export default function () {
         '.lval3-tb-on{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-brand-primary)}' +
         '.lval3-tb-ico{font-size:17px;line-height:1}' +
         '.lval3-tb-lbl{font-size:11px}' +
-        '.lval3-panel{position:fixed;right:64px;top:50%;transform:translateY(-50%);width:380px;max-width:62vw;max-height:78vh;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;overflow:hidden;pointer-events:auto;z-index:9994;box-shadow:0 8px 30px rgba(0,0,0,.35)}' +
+        '.lval3-panel{position:fixed;right:64px;top:50%;transform:translateY(-50%);width:360px;max-width:60vw;max-height:78vh;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;overflow:hidden;pointer-events:auto;z-index:9994;box-shadow:0 8px 30px rgba(0,0,0,.35)}' +
         '.lval3-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-l1);font-weight:600;min-height:34px}' +
         '.lval3-x{background:none;border:none;color:var(--dsw-alias-label-secondary);font-size:16px;cursor:pointer;line-height:1;padding:2px 6px}' +
         '.lval3-x:hover{color:var(--dsw-alias-label-primary)}' +
         '.lval3-x:disabled{opacity:.4;cursor:default}' +
-        '.lval3-ptabs{display:flex;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2)}' +
-        '.lval3-ptab{background:none;border:none;color:var(--dsw-alias-label-secondary);padding:6px 14px;cursor:pointer;font:inherit;border-bottom:2px solid transparent}' +
-        '.lval3-ptab-on{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-brand-primary)}' +
         '.lval3-body{overflow:auto;flex:1;padding:8px;display:flex;flex-direction:column;gap:8px}' +
         '.lval3-row{display:flex;gap:6px;align-items:center}' +
         '.lval3-input{flex:1;min-width:0;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l1);border-radius:6px;padding:5px 8px;font:inherit}' +
@@ -72,46 +85,51 @@ export default function () {
         '.lval3-com{color:var(--dsw-alias-label-secondary)}' +
         '.lval3-num{color:var(--dsw-alias-state-warn-primary)}' +
         '.lval3-pre{color:var(--dsw-alias-state-error-primary)}' +
-      '.lval5-um{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin:4px 0;padding:0 8px}' +
-      '.lval5-bubble{max-width:min(85%,720px);background:#bfdbfe;color:#000;border-radius:14px;border-bottom-right-radius:4px;padding:9px 14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.1)}' +
-      '.lval5-actions{display:none;align-items:center;gap:2px;margin-top:2px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
-      '.lval5-um:hover .lval5-actions{display:inline-flex}' +
-      '.lval5-act{display:inline-flex;align-items:center;gap:4px;background:none;border:none;border-radius:6px;color:#86909c;cursor:pointer;font:inherit;font-size:11.5px;padding:3px 8px;line-height:1.5}' +
-      '.lval5-act:hover{color:#4d6bfe;background:rgba(77,107,254,.08)}' +
-      '.lval5-act:disabled{opacity:.4;cursor:default}' +
-      '.lval6-list{display:flex;flex-direction:column;gap:1px}' +
-      '.lval6-sess{position:relative;display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:8px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
-      '.lval6-sess:hover{background:var(--dsw-alias-bg-layer-2)}' +
-      '.lval6-sess-cur{background:rgba(77,107,254,.10)}' +
-      '.lval6-sess-cur:hover{background:rgba(77,107,254,.16)}' +
-      '.lval6-chev{width:16px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--dsw-alias-label-secondary);cursor:pointer;flex:none;border-radius:4px}' +
-      '.lval6-chev:hover{color:#4d6bfe}' +
-      '.lval6-chev-none{visibility:hidden}' +
-      '.lval6-sess-title{flex:1;min-width:0;font-size:13px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}' +
-      '.lval6-sess-cur .lval6-sess-title{color:#4d6bfe}' +
-      '.lval6-dots{display:none;align-items:center;justify-content:center;width:26px;height:26px;background:none;border:none;border-radius:6px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:17px;line-height:1;flex:none}' +
-      '.lval6-sess:hover .lval6-dots{display:inline-flex}' +
-      '.lval6-dots:hover{background:rgba(0,0,0,.06)}' +
-      '.lval6-dots-armed{display:inline-flex;color:#fff;background:#f87171;width:auto;padding:0 9px;font-size:11px}' +
-      '.lval6-dots-armed:hover{background:#ef4444}' +
-      '.lval6-menu{position:absolute;right:6px;top:34px;z-index:9997;min-width:132px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:4px;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
-      '.lval6-menu-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--dsw-alias-label-primary);background:none;border:none;text-align:left}' +
-      '.lval6-menu-item:hover{background:var(--dsw-alias-bg-layer-2)}' +
-      '.lval6-menu-item-del:hover{color:#f87171;background:rgba(248,113,113,.10)}' +
-      '.lval6-group{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:11.5px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;user-select:none}' +
-      '.lval6-group:hover{color:#4d6bfe}' +
-      '.lval6-group-n{font-weight:400;font-size:11px}' +
-      '.lval6-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:999px;padding:5px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
-      '.lval6-search-input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px}' +
-      '.lval6-search-input::placeholder{color:var(--dsw-alias-label-secondary)}' +
-      '.lval6-btn-mini{background:none;border:1px solid var(--dsw-alias-border-l1);border-radius:999px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;flex:none}' +
-      '.lval6-btn-mini:hover{color:#4d6bfe;border-color:#4d6bfe}' +
-      '.lval6-btn-mini:disabled{opacity:.5;cursor:default}' +
-      '.lval6-input{flex:1;min-width:0;background:var(--dsw-alias-bg-base);border:1px solid #4d6bfe;border-radius:8px;color:var(--dsw-alias-label-primary);padding:5px 9px;font:inherit;font-size:12.5px;outline:none}' +
-      '.lval6-btn{background:#4d6bfe;border:none;color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap}' +
-      '.lval6-btn:hover{opacity:.9}' +
-      '.lval6-btn-ghost{background:none;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap}' +
-      '.lval6-btn-ghost:hover{color:var(--dsw-alias-label-primary)}'
+        '.lval5-um{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin:4px 0;padding:0 8px}' +
+        '.lval5-bubble{max-width:min(85%,720px);background:#bfdbfe;color:#000;border-radius:14px;border-bottom-right-radius:4px;padding:9px 14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.1)}' +
+        '.lval5-actions{display:none;align-items:center;gap:2px;margin-top:2px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
+        '.lval5-um:hover .lval5-actions{display:inline-flex}' +
+        '.lval5-act{display:inline-flex;align-items:center;gap:4px;background:none;border:none;border-radius:6px;color:#86909c;cursor:pointer;font:inherit;font-size:11.5px;padding:3px 8px;line-height:1.5}' +
+        '.lval5-act:hover{color:#4d6bfe;background:rgba(77,107,254,.08)}' +
+        '.lval5-act:disabled{opacity:.4;cursor:default}' +
+        '.lval6-list{display:flex;flex-direction:column;gap:1px}' +
+        '.lval6-sess{position:relative;display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:8px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
+        '.lval6-sess:hover{background:var(--dsw-alias-bg-layer-2)}' +
+        '.lval6-sess-cur{background:rgba(77,107,254,.10)}' +
+        '.lval6-sess-cur:hover{background:rgba(77,107,254,.16)}' +
+        '.lval6-chev{width:16px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--dsw-alias-label-secondary);cursor:pointer;flex:none;border-radius:4px}' +
+        '.lval6-chev:hover{color:#4d6bfe}' +
+        '.lval6-chev-none{visibility:hidden}' +
+        '.lval6-sess-title{flex:1;min-width:0;font-size:13px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}' +
+        '.lval6-sess-cur .lval6-sess-title{color:#4d6bfe}' +
+        '.lval6-dots{display:none;align-items:center;justify-content:center;width:26px;height:26px;background:none;border:none;border-radius:6px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:17px;line-height:1;flex:none}' +
+        '.lval6-sess:hover .lval6-dots{display:inline-flex}' +
+        '.lval6-dots:hover{background:rgba(0,0,0,.06)}' +
+        '.lval6-dots-armed{display:inline-flex;color:#fff;background:#f87171;width:auto;padding:0 9px;font-size:11px}' +
+        '.lval6-dots-armed:hover{background:#ef4444}' +
+        '.lval6-menu{position:absolute;right:6px;top:34px;z-index:9997;min-width:132px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:4px;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
+        '.lval6-menu-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--dsw-alias-label-primary);background:none;border:none;text-align:left}' +
+        '.lval6-menu-item:hover{background:var(--dsw-alias-bg-layer-2)}' +
+        '.lval6-menu-item-del:hover{color:#f87171;background:rgba(248,113,113,.10)}' +
+        '.lval6-group{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:11.5px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;user-select:none}' +
+        '.lval6-group:hover{color:#4d6bfe}' +
+        '.lval6-group-n{font-weight:400;font-size:11px}' +
+        '.lval6-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:999px;padding:5px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
+        '.lval6-search-input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px}' +
+        '.lval6-search-input::placeholder{color:var(--dsw-alias-label-secondary)}' +
+        '.lval6-btn-mini{background:none;border:1px solid var(--dsw-alias-border-l1);border-radius:999px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;flex:none}' +
+        '.lval6-btn-mini:hover{color:#4d6bfe;border-color:#4d6bfe}' +
+        '.lval6-btn-mini:disabled{opacity:.5;cursor:default}' +
+        '.lval6-input{flex:1;min-width:0;background:var(--dsw-alias-bg-base);border:1px solid #4d6bfe;border-radius:8px;color:var(--dsw-alias-label-primary);padding:5px 9px;font:inherit;font-size:12.5px;outline:none}' +
+        '.lval6-btn{background:#4d6bfe;border:none;color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap}' +
+        '.lval6-btn:hover{opacity:.9}' +
+        '.lval6-btn-ghost{background:none;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap}' +
+        '.lval6-btn-ghost:hover{color:var(--dsw-alias-label-primary)}' +
+        '.lval8-panel{position:fixed;left:0;top:0;bottom:0;width:min(360px,42vw);background:var(--dsw-alias-bg-layer-1);border-right:1px solid var(--dsw-alias-border-l1);display:flex;flex-direction:column;z-index:9994;pointer-events:auto;box-shadow:4px 0 24px rgba(0,0,0,.18)}' +
+        '.lval8-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-l1);font-weight:600;min-height:40px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
+        '.lval8-fa{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:12.5px}' +
+        '.lval8-fa:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}' +
+        '.lval8-fa-on{color:#4d6bfe}'
       )
 
       const KEYWORDS = 'alignas alignof and and_eq asm auto bitand bitor bool break case catch char char8_t char16_t char32_t class co_await co_return co_yield compl concept const consteval constexpr constinit const_cast continue decltype default delete do double dynamic_cast else enum explicit export extern false float for friend goto if inline int long mutable namespace new noexcept not not_eq nullptr operator or or_eq private protected public register reinterpret_cast requires return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while xor xor_eq override final import module'.split(' ')
@@ -262,26 +280,11 @@ export default function () {
         )
       }
 
-      const Toolbar = (props) => {
+      const VerTreePanel = (props) => {
         const useSessionsHook = props && props.useSessions
         const listState = useSessionsHook ? useSessionsHook(function (s) { return s }) : null
         const curId = listState ? listState.current : null
-        const [panel, setPanel] = React.useState(null)
-        const [ptab, setPtab] = React.useState('code')
-        const [info, setInfo] = React.useState(null)
-        const [files, setFiles] = React.useState([])
-        const [filesLoading, setFilesLoading] = React.useState(true)
-        const [sel, setSel] = React.useState(null)
-        const [codeModal, setCodeModal] = React.useState(null)
-        const [busy, setBusy] = React.useState(false)
-        const [log, setLog] = React.useState('')
-        const [runModal, setRunModal] = React.useState(false)
-        const [versions, setVersions] = React.useState([])
-        const [verLoading, setVerLoading] = React.useState(true)
-        const [snapLabel, setSnapLabel] = React.useState('')
-        const [verBusy, setVerBusy] = React.useState(false)
-        const [verMsg, setVerMsg] = React.useState(null)
-        const [confirmVer, setConfirmVer] = React.useState(null)
+        const [open, setOpen] = React.useState(verTreeOpen())
         const [sessions, setSessions] = React.useState([])
         const [sessLoading, setSessLoading] = React.useState(true)
         const [sessQuery, setSessQuery] = React.useState('')
@@ -292,6 +295,14 @@ export default function () {
         const [editId, setEditId] = React.useState(null)
         const [editTitle, setEditTitle] = React.useState('')
         const [sessMsg, setSessMsg] = React.useState(null)
+
+        React.useEffect(function () {
+          return verTreeSubscribe(function (v) { setOpen(v) })
+        }, [])
+
+        React.useEffect(function () {
+          if (open) loadSessions()
+        }, [open])
 
         React.useEffect(function () {
           if (curId && sessions.length > 0) {
@@ -307,29 +318,6 @@ export default function () {
           }
         }, [curId])
 
-        React.useEffect(function () {
-          let alive = true
-          host.call('lval-info', {}).then(function (r) {
-            if (alive) setInfo(r)
-          }).catch(function () {})
-          host.call('lval-list-files', {}).then(function (r) {
-            if (!alive) return
-            setFiles((r && r.files) || [])
-            setFilesLoading(false)
-          }).catch(function () {
-            if (alive) setFilesLoading(false)
-          })
-          host.call('lval-ver-list', {}).then(function (r) {
-            if (!alive) return
-            setVersions((r && r.versions) || [])
-            setVerLoading(false)
-          }).catch(function () {
-            if (alive) setVerLoading(false)
-          })
-          loadSessions()
-          return function () { alive = false }
-        }, [])
-
         const loadSessions = () => {
           setSessLoading(true)
           host.call('lval-sessions', {}).then(function (r) {
@@ -342,130 +330,16 @@ export default function () {
           })
         }
 
-        const refreshVersions = () => {
-          host.call('lval-ver-list', {}).then(function (r) {
-            setVersions((r && r.versions) || [])
-          }).catch(function () {})
-        }
-
-        const openCode = (f) => {
-          setCodeModal({ path: f.path, content: '加载中…' })
-          host.call('lval-read-file', { path: f.path }).then(function (r) {
-            if (r && r.error) setCodeModal({ path: f.path + ' — ' + r.error, content: '' })
-            else setCodeModal({ path: f.path, content: (r && r.content) || '' })
-          }).catch(function (e) {
-            setCodeModal({ path: f.path, content: '读取失败: ' + String(e && e.message ? e.message : e) })
-          })
-        }
-
-        const buildLog = (r, withRun) => {
-          const parts = []
-          if (r.output) parts.push(r.output)
-          if (r.error) parts.push(r.error)
-          if (r.ok) {
-            parts.push('✓ 编译成功（' + (info ? info.configuration : '') + ' | ' + (info ? info.platform : '') + '）')
-            if (withRun && r.run) {
-              if (r.run.ok) parts.push('✓ 已启动 ' + (info ? info.exe : 'LVAL.exe') + '（PID ' + r.run.pid + '）')
-              else parts.push('✗ 启动失败：' + (r.run.error || ''))
-            }
-          } else {
-            parts.push('✗ 编译失败（退出码 ' + r.exitCode + '）')
-          }
-          return parts.join(NL)
-        }
-
-        const doRun = (withRun) => {
-          if (busy) return
-          setRunModal(true)
-          setBusy(true)
-          setLog('正在使用 VS2026 (MSBuild) 编译 LVAL.slnx…')
-          host.call(withRun ? 'lval-build-run' : 'lval-build', {}).then(function (r) {
-            setBusy(false)
-            if (!r) { setLog('无响应'); return }
-            setLog(buildLog(r, withRun))
-          }).catch(function (e) {
-            setBusy(false)
-            setLog('✗ 调用失败：' + String(e && e.message ? e.message : e))
-          })
-        }
-
-        const createSnapshot = () => {
-          if (verBusy) return
-          setVerBusy(true)
-          setVerMsg(null)
-          host.call('lval-ver-snapshot', { label: snapLabel }).then(function (r) {
-            setVerBusy(false)
-            if (r && r.ok) {
-              setSnapLabel('')
-              setVerMsg({ ok: true, text: '✓ 已创建快照 ' + r.id + '（' + r.fileCount + ' 个文件）' })
-              refreshVersions()
-            } else {
-              setVerMsg({ ok: false, text: '✗ ' + ((r && r.error) || '创建失败') })
-            }
-          }).catch(function (e) {
-            setVerBusy(false)
-            setVerMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
-          })
-        }
-
-        const restoreVer = (id) => {
-          if (confirmVer && confirmVer.id === id && confirmVer.kind === 'restore') {
-            setConfirmVer(null)
-            setVerBusy(true)
-            setVerMsg(null)
-            host.call('lval-ver-restore', { id: id }).then(function (r) {
-              setVerBusy(false)
-              if (r && r.ok) setVerMsg({ ok: true, text: '✓ 已回退 ' + r.restored + ' 个文件（自动备份 ' + r.backupId + '）' })
-              else setVerMsg({ ok: false, text: '✗ ' + ((r && r.error) || '回退失败') })
-            }).catch(function (e) {
-              setVerBusy(false)
-              setVerMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
-            })
-          } else {
-            setConfirmVer({ id: id, kind: 'restore' })
-          }
-        }
-
-        const deleteVer = (id) => {
-          if (confirmVer && confirmVer.id === id && confirmVer.kind === 'delete') {
-            setConfirmVer(null)
-            setVerBusy(true)
-            setVerMsg(null)
-            host.call('lval-ver-delete', { id: id }).then(function (r) {
-              setVerBusy(false)
-              if (r && r.ok) {
-                setVerMsg({ ok: true, text: '✓ 已删除版本 ' + id })
-                refreshVersions()
-              } else {
-                setVerMsg({ ok: false, text: '✗ ' + ((r && r.error) || '删除失败') })
-              }
-            }).catch(function (e) {
-              setVerBusy(false)
-              setVerMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
-            })
-          } else {
-            setConfirmVer({ id: id, kind: 'delete' })
-          }
-        }
-
         const openSession = (id) => {
-          if (!sessionsSvc) {
-            setSessMsg({ ok: false, text: '会话服务不可用' })
-            return
-          }
+          if (!sessionsSvc) return
           try {
             sessionsSvc.open(id)
             setSessMsg(null)
-          } catch (e) {
-            setSessMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
-          }
+          } catch (e) { /* ignore */ }
         }
 
         const forkSession = (id) => {
-          if (!sessionsSvc) {
-            setSessMsg({ ok: false, text: '会话服务不可用' })
-            return
-          }
+          if (!sessionsSvc) return
           setSessMsg(null)
           sessionsSvc.fork({ sessionId: id, increaseTitle: true }).then(function (newId) {
             setSessMsg(null)
@@ -481,24 +355,24 @@ export default function () {
         }
 
         const deleteSession = (id) => {
-        if (delId === id) {
-          setDelId(null)
-          if (!workspacesSvc) {
-            setSessMsg({ ok: false, text: '工作区服务不可用' })
-            return
+          if (delId === id) {
+            setDelId(null)
+            if (!workspacesSvc) {
+              setSessMsg({ ok: false, text: '工作区服务不可用' })
+              return
+            }
+            setSessMsg(null)
+            workspacesSvc.archiveSession(id).then(function () {
+              loadSessions()
+            }).catch(function (e) {
+              setSessMsg({ ok: false, text: '✗ 删除失败：' + String(e && e.message ? e.message : e) })
+            })
+          } else {
+            setDelId(id)
           }
-          setSessMsg(null)
-          workspacesSvc.archiveSession(id).then(function () {
-            loadSessions()
-          }).catch(function (e) {
-            setSessMsg({ ok: false, text: '✗ 删除失败：' + String(e && e.message ? e.message : e) })
-          })
-        } else {
-          setDelId(id)
         }
-      }
 
-      const saveRename = (id) => {
+        const saveRename = (id) => {
           setSessMsg(null)
           host.call('lval-session-rename', { id: id, title: editTitle }).then(function (r) {
             if (r && r.ok) {
@@ -516,26 +390,6 @@ export default function () {
 
         const msgCls = (m) => m ? (m.ok ? 'lval3-msg lval3-msg-ok' : 'lval3-msg lval3-msg-err') : 'lval3-msg'
         const msgText = (m) => m ? m.text : ''
-
-        const verRows = versions.map(function (v) {
-          const confirm = confirmVer && confirmVer.id === v.id ? confirmVer.kind : null
-          return React.createElement('div', { key: v.id, className: 'lval3-ver' },
-            React.createElement('div', { className: 'lval3-ver-main' },
-              React.createElement('div', { className: 'lval3-ver-title' }, v.label || v.id),
-              React.createElement('div', { className: 'lval3-ver-sub' }, v.id + ' · ' + fmtTime(v.time) + ' · ' + v.fileCount + ' 文件')
-            ),
-            React.createElement('button', {
-              className: 'lval3-btn-mini' + (confirm === 'restore' ? ' lval3-btn-danger' : ''),
-              disabled: verBusy,
-              onClick: function () { restoreVer(v.id) },
-            }, confirm === 'restore' ? '确认回退?' : '回退'),
-            React.createElement('button', {
-              className: 'lval3-btn-mini lval3-btn-danger' + (confirm === 'delete' ? ' lval3-btn-danger' : ''),
-              disabled: verBusy,
-              onClick: function () { deleteVer(v.id) },
-            }, confirm === 'delete' ? '确认删除?' : '删除')
-          )
-        })
 
         const q = sessQuery.trim().toLowerCase()
         const shown = q === '' ? sessions : sessions.filter(function (s) {
@@ -683,6 +537,227 @@ export default function () {
           )
         }
 
+        if (!open) return null
+        return React.createElement('div', { className: 'lval8-panel' },
+          React.createElement('div', { className: 'lval8-head' },
+            React.createElement('span', null, '对话版本'),
+            React.createElement('button', { className: 'lval3-x', onClick: function () { verTreeSet(false) } }, '×')
+          ),
+          React.createElement('div', { className: 'lval3-body' },
+            React.createElement('div', { className: 'lval3-row' },
+              React.createElement('div', { className: 'lval6-search' },
+                React.createElement('span', null, '🔍'),
+                React.createElement('input', {
+                  className: 'lval6-search-input',
+                  placeholder: '搜索对话',
+                  value: sessQuery,
+                  onChange: function (e) { setSessQuery(e.target.value) },
+                })
+              ),
+              React.createElement('button', { className: 'lval6-btn-mini', disabled: sessLoading, onClick: loadSessions, title: '刷新' }, '↻')
+            ),
+            sessMsg ? React.createElement('div', { className: msgCls(sessMsg) }, msgText(sessMsg)) : null,
+            sessLoading
+              ? React.createElement('div', { className: 'lval3-empty' }, '加载会话列表…')
+              : shown.length === 0
+                ? React.createElement('div', { className: 'lval3-empty' }, sessions.length === 0 ? '暂无会话记录' : '没有匹配的会话')
+                : q !== ''
+                  ? React.createElement('div', { className: 'lval6-list' }, treeRows)
+                  : React.createElement('div', { className: 'lval6-list' }, groupSections),
+            menuId
+              ? React.createElement('div', {
+                  style: { position: 'fixed', inset: 0, zIndex: 9995 },
+                  onClick: function () { setMenuId(null) },
+                })
+              : null
+          )
+        )
+      }
+
+      const SidebarFooterAction = (props) => {
+        const [open, setOpen] = React.useState(verTreeOpen())
+        React.useEffect(function () {
+          return verTreeSubscribe(function (v) { setOpen(v) })
+        }, [])
+        const wide = !!(props && props.wide)
+        return React.createElement('button', {
+          className: 'lval8-fa' + (open ? ' lval8-fa-on' : ''),
+          title: '对话版本控制',
+          onClick: function () { verTreeSet(!verTreeOpen()) },
+        },
+          React.createElement('span', null, '🕘'),
+          wide ? React.createElement('span', null, '对话版本') : null
+        )
+      }
+
+      const Toolbar = (props) => {
+        const [panel, setPanel] = React.useState(null)
+        const [info, setInfo] = React.useState(null)
+        const [files, setFiles] = React.useState([])
+        const [filesLoading, setFilesLoading] = React.useState(true)
+        const [sel, setSel] = React.useState(null)
+        const [codeModal, setCodeModal] = React.useState(null)
+        const [busy, setBusy] = React.useState(false)
+        const [log, setLog] = React.useState('')
+        const [runModal, setRunModal] = React.useState(false)
+        const [versions, setVersions] = React.useState([])
+        const [verLoading, setVerLoading] = React.useState(true)
+        const [snapLabel, setSnapLabel] = React.useState('')
+        const [verBusy, setVerBusy] = React.useState(false)
+        const [verMsg, setVerMsg] = React.useState(null)
+        const [confirmVer, setConfirmVer] = React.useState(null)
+
+        React.useEffect(function () {
+          let alive = true
+          host.call('lval-info', {}).then(function (r) {
+            if (alive) setInfo(r)
+          }).catch(function () {})
+          host.call('lval-list-files', {}).then(function (r) {
+            if (!alive) return
+            setFiles((r && r.files) || [])
+            setFilesLoading(false)
+          }).catch(function () {
+            if (alive) setFilesLoading(false)
+          })
+          host.call('lval-ver-list', {}).then(function (r) {
+            if (!alive) return
+            setVersions((r && r.versions) || [])
+            setVerLoading(false)
+          }).catch(function () {
+            if (alive) setVerLoading(false)
+          })
+          return function () { alive = false }
+        }, [])
+
+        const refreshVersions = () => {
+          host.call('lval-ver-list', {}).then(function (r) {
+            setVersions((r && r.versions) || [])
+          }).catch(function () {})
+        }
+
+        const openCode = (f) => {
+          setCodeModal({ path: f.path, content: '加载中…' })
+          host.call('lval-read-file', { path: f.path }).then(function (r) {
+            if (r && r.error) setCodeModal({ path: f.path + ' — ' + r.error, content: '' })
+            else setCodeModal({ path: f.path, content: (r && r.content) || '' })
+          }).catch(function (e) {
+            setCodeModal({ path: f.path, content: '读取失败: ' + String(e && e.message ? e.message : e) })
+          })
+        }
+
+        const buildLog = (r, withRun) => {
+          const parts = []
+          if (r.output) parts.push(r.output)
+          if (r.error) parts.push(r.error)
+          if (r.ok) {
+            parts.push('✓ 编译成功（' + (info ? info.configuration : '') + ' | ' + (info ? info.platform : '') + '）')
+            if (withRun && r.run) {
+              if (r.run.ok) parts.push('✓ 已启动 ' + (info ? info.exe : 'LVAL.exe') + '（PID ' + r.run.pid + '）')
+              else parts.push('✗ 启动失败：' + (r.run.error || ''))
+            }
+          } else {
+            parts.push('✗ 编译失败（退出码 ' + r.exitCode + '）')
+          }
+          return parts.join(NL)
+        }
+
+        const doRun = (withRun) => {
+          if (busy) return
+          setRunModal(true)
+          setBusy(true)
+          setLog('正在使用 VS2026 (MSBuild) 编译 LVAL.slnx…')
+          host.call(withRun ? 'lval-build-run' : 'lval-build', {}).then(function (r) {
+            setBusy(false)
+            if (!r) { setLog('无响应'); return }
+            setLog(buildLog(r, withRun))
+          }).catch(function (e) {
+            setBusy(false)
+            setLog('✗ 调用失败：' + String(e && e.message ? e.message : e))
+          })
+        }
+
+        const createSnapshot = () => {
+          if (verBusy) return
+          setVerBusy(true)
+          setVerMsg(null)
+          host.call('lval-ver-snapshot', { label: snapLabel }).then(function (r) {
+            setVerBusy(false)
+            if (r && r.ok) {
+              setSnapLabel('')
+              setVerMsg({ ok: true, text: '✓ 已创建快照 ' + r.id + '（' + r.fileCount + ' 个文件）' })
+              refreshVersions()
+            } else {
+              setVerMsg({ ok: false, text: '✗ ' + ((r && r.error) || '创建失败') })
+            }
+          }).catch(function (e) {
+            setVerBusy(false)
+            setVerMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
+          })
+        }
+
+        const restoreVer = (id) => {
+          if (confirmVer && confirmVer.id === id && confirmVer.kind === 'restore') {
+            setConfirmVer(null)
+            setVerBusy(true)
+            setVerMsg(null)
+            host.call('lval-ver-restore', { id: id }).then(function (r) {
+              setVerBusy(false)
+              if (r && r.ok) setVerMsg({ ok: true, text: '✓ 已回退 ' + r.restored + ' 个文件（自动备份 ' + r.backupId + '）' })
+              else setVerMsg({ ok: false, text: '✗ ' + ((r && r.error) || '回退失败') })
+            }).catch(function (e) {
+              setVerBusy(false)
+              setVerMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
+            })
+          } else {
+            setConfirmVer({ id: id, kind: 'restore' })
+          }
+        }
+
+        const deleteVer = (id) => {
+          if (confirmVer && confirmVer.id === id && confirmVer.kind === 'delete') {
+            setConfirmVer(null)
+            setVerBusy(true)
+            setVerMsg(null)
+            host.call('lval-ver-delete', { id: id }).then(function (r) {
+              setVerBusy(false)
+              if (r && r.ok) {
+                setVerMsg({ ok: true, text: '✓ 已删除版本 ' + id })
+                refreshVersions()
+              } else {
+                setVerMsg({ ok: false, text: '✗ ' + ((r && r.error) || '删除失败') })
+              }
+            }).catch(function (e) {
+              setVerBusy(false)
+              setVerMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
+            })
+          } else {
+            setConfirmVer({ id: id, kind: 'delete' })
+          }
+        }
+
+        const msgCls = (m) => m ? (m.ok ? 'lval3-msg lval3-msg-ok' : 'lval3-msg lval3-msg-err') : 'lval3-msg'
+        const msgText = (m) => m ? m.text : ''
+
+        const verRows = versions.map(function (v) {
+          const confirm = confirmVer && confirmVer.id === v.id ? confirmVer.kind : null
+          return React.createElement('div', { key: v.id, className: 'lval3-ver' },
+            React.createElement('div', { className: 'lval3-ver-main' },
+              React.createElement('div', { className: 'lval3-ver-title' }, v.label || v.id),
+              React.createElement('div', { className: 'lval3-ver-sub' }, v.id + ' · ' + fmtTime(v.time) + ' · ' + v.fileCount + ' 文件')
+            ),
+            React.createElement('button', {
+              className: 'lval3-btn-mini' + (confirm === 'restore' ? ' lval3-btn-danger' : ''),
+              disabled: verBusy,
+              onClick: function () { restoreVer(v.id) },
+            }, confirm === 'restore' ? '确认回退?' : '回退'),
+            React.createElement('button', {
+              className: 'lval3-btn-mini lval3-btn-danger' + (confirm === 'delete' ? ' lval3-btn-danger' : ''),
+              disabled: verBusy,
+              onClick: function () { deleteVer(v.id) },
+            }, confirm === 'delete' ? '确认删除?' : '删除')
+          )
+        })
+
         return React.createElement('div', { className: 'lval3-root' },
           React.createElement('div', { className: 'lval3-toolbar' },
             React.createElement('button', {
@@ -703,7 +778,7 @@ export default function () {
             ),
             React.createElement('button', {
               className: 'lval3-tb-btn' + (panel === 'ver' ? ' lval3-tb-on' : ''),
-              title: '版本管理：代码快照/回退 与 会话管理',
+              title: '程序版本：代码快照/回退',
               onClick: function () { setPanel(panel === 'ver' ? null : 'ver') },
             },
               React.createElement('span', { className: 'lval3-tb-ico' }, '🕘'),
@@ -740,60 +815,25 @@ export default function () {
           panel === 'ver'
             ? React.createElement('div', { className: 'lval3-panel' },
                 React.createElement('div', { className: 'lval3-head' },
-                  React.createElement('span', null, '版本管理'),
+                  React.createElement('span', null, '程序版本（代码快照）'),
                   React.createElement('button', { className: 'lval3-x', onClick: function () { setPanel(null) } }, '×')
                 ),
-                React.createElement('div', { className: 'lval3-ptabs' },
-                  React.createElement('button', { className: 'lval3-ptab' + (ptab === 'code' ? ' lval3-ptab-on' : ''), onClick: function () { setPtab('code') } }, '代码版本'),
-                  React.createElement('button', { className: 'lval3-ptab' + (ptab === 'sess' ? ' lval3-ptab-on' : ''), onClick: function () { setPtab('sess') } }, '对话版本')
-                ),
                 React.createElement('div', { className: 'lval3-body' },
-                  ptab === 'code'
-                    ? React.createElement(React.Fragment, null,
-                        React.createElement('div', { className: 'lval3-row' },
-                          React.createElement('input', {
-                            className: 'lval3-input',
-                            placeholder: '快照标签（可选）',
-                            value: snapLabel,
-                            onChange: function (e) { setSnapLabel(e.target.value) },
-                          }),
-                          React.createElement('button', { className: 'lval3-btn', disabled: verBusy, onClick: createSnapshot }, verBusy ? '处理中…' : '创建快照')
-                        ),
-                        verMsg ? React.createElement('div', { className: msgCls(verMsg) }, msgText(verMsg)) : null,
-                        verLoading
-                          ? React.createElement('div', { className: 'lval3-empty' }, '加载版本列表…')
-                          : versions.length === 0
-                            ? React.createElement('div', { className: 'lval3-empty' }, '暂无快照，点击「创建快照」备份当前代码')
-                            : React.createElement('div', { className: 'lval3-files' }, verRows)
-                      )
-                    : React.createElement(React.Fragment, null,
-                        React.createElement('div', { className: 'lval3-row' },
-                          React.createElement('div', { className: 'lval6-search' },
-                            React.createElement('span', null, '🔍'),
-                            React.createElement('input', {
-                              className: 'lval6-search-input',
-                              placeholder: '搜索对话',
-                              value: sessQuery,
-                              onChange: function (e) { setSessQuery(e.target.value) },
-                            })
-                          ),
-                          React.createElement('button', { className: 'lval6-btn-mini', disabled: sessLoading, onClick: loadSessions, title: '刷新' }, '↻')
-                        ),
-                        sessMsg ? React.createElement('div', { className: msgCls(sessMsg) }, msgText(sessMsg)) : null,
-                        sessLoading
-                          ? React.createElement('div', { className: 'lval3-empty' }, '加载会话列表…')
-                          : shown.length === 0
-                            ? React.createElement('div', { className: 'lval3-empty' }, sessions.length === 0 ? '暂无会话记录' : '没有匹配的会话')
-                            : q !== ''
-                              ? React.createElement('div', { className: 'lval6-list' }, treeRows)
-                              : React.createElement('div', { className: 'lval6-list' }, groupSections),
-                        menuId
-                          ? React.createElement('div', {
-                              style: { position: 'fixed', inset: 0, zIndex: 9995 },
-                              onClick: function () { setMenuId(null) },
-                            })
-                          : null
-                      )
+                  React.createElement('div', { className: 'lval3-row' },
+                    React.createElement('input', {
+                      className: 'lval3-input',
+                      placeholder: '快照标签（可选）',
+                      value: snapLabel,
+                      onChange: function (e) { setSnapLabel(e.target.value) },
+                    }),
+                    React.createElement('button', { className: 'lval3-btn', disabled: verBusy, onClick: createSnapshot }, verBusy ? '处理中…' : '创建快照')
+                  ),
+                  verMsg ? React.createElement('div', { className: msgCls(verMsg) }, msgText(verMsg)) : null,
+                  verLoading
+                    ? React.createElement('div', { className: 'lval3-empty' }, '加载版本列表…')
+                    : versions.length === 0
+                      ? React.createElement('div', { className: 'lval3-empty' }, '暂无快照，点击「创建快照」备份当前代码')
+                      : React.createElement('div', { className: 'lval3-files' }, verRows)
                 )
               )
             : null,
@@ -833,6 +873,20 @@ export default function () {
         return slots.register(
           { name: 'shell.overlay', id: 'lval-toolbar' },
           function (props) { return React.createElement(Toolbar, props) }
+        )
+      })
+
+      slots.inject('shell.overlay', function () {
+        return slots.register(
+          { name: 'shell.overlay', id: 'lval-ver-tree' },
+          function (props) { return React.createElement(VerTreePanel, props) }
+        )
+      })
+
+      slots.inject('sidebar.footer.action', function () {
+        return slots.register(
+          { name: 'sidebar.footer.action', id: 'lval-ver-tree', order: 20 },
+          function (props) { return React.createElement(SidebarFooterAction, props) }
         )
       })
 
