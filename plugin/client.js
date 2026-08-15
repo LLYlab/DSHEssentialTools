@@ -73,9 +73,10 @@ export default function () {
         '.lval3-pre{color:var(--dsw-alias-state-error-primary)}' +
       '.lval5-um{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin:4px 0;padding:0 8px}' +
       '.lval5-bubble{max-width:min(85%,720px);background:#bfdbfe;color:#000;border-radius:14px;border-bottom-right-radius:4px;padding:9px 14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.1)}' +
-      '.lval5-actions{display:inline-flex;align-items:center;gap:2px;font-size:12px}' +
-      '.lval5-act{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;padding:3px 8px;border-radius:6px}' +
-      '.lval5-act:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}' +
+      '.lval5-actions{display:none;align-items:center;gap:2px;margin-top:2px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
+      '.lval5-um:hover .lval5-actions{display:inline-flex}' +
+      '.lval5-act{display:inline-flex;align-items:center;gap:4px;background:none;border:none;border-radius:6px;color:#86909c;cursor:pointer;font:inherit;font-size:11.5px;padding:3px 8px;line-height:1.5}' +
+      '.lval5-act:hover{color:#4d6bfe;background:rgba(77,107,254,.08)}' +
       '.lval5-act:disabled{opacity:.4;cursor:default}' +
       '.lval6-list{display:flex;flex-direction:column;gap:2px}' +
       '.lval6-sess{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
@@ -164,6 +165,7 @@ export default function () {
         const useSessionHook = props.useSession
         const snap = useSessionHook ? useSessionHook(function (s) { return s }) : null
         const inputActions = props.inputActions
+        const sessId = props.sessionId
         const [scheme, setScheme] = React.useState(function () {
           if (!themeSvc) return 'light'
           try {
@@ -200,17 +202,29 @@ export default function () {
         const text = textOfBlocks(content)
         const running = !!(snap && snap.running)
         const can = text !== '' && !running
-        const doModify = () => {
+        const doEdit = () => {
           if (!can || !inputActions) return
           try {
             inputActions.setDraft(text)
           } catch (e) { /* ignore */ }
         }
-        const doRetry = () => {
+        const doRe = () => {
           if (!can || !inputActions) return
           try {
             inputActions.setDraft(text)
             inputActions.submit()
+          } catch (e) { /* ignore */ }
+        }
+        const doFork = () => {
+          if (!sessionsSvc || !sessId || seq == null) return
+          try {
+            sessionsSvc.fork({ sessionId: sessId, atSeq: seq }).then(function (newId) {
+              if (newId) {
+                try {
+                  sessionsSvc.open(newId)
+                } catch (e) { /* ignore */ }
+              }
+            }).catch(function () { /* ignore */ })
           } catch (e) { /* ignore */ }
         }
         return React.createElement('div', { className: 'lval5-um' },
@@ -218,22 +232,22 @@ export default function () {
           React.createElement('div', { className: 'lval5-actions' },
             React.createElement('button', {
               className: 'lval5-act',
-              title: '修改这条提问（回填输入框编辑后重发）',
+              title: '编辑这条提问（回填输入框修改后重发）',
               disabled: !can,
-              onClick: doModify,
-            },
-              React.createElement('span', null, '✎'),
-              ' 修改'
-            ),
+              onClick: doEdit,
+            }, '✎ Edit'),
             React.createElement('button', {
               className: 'lval5-act',
-              title: '用同一提问重试（重新生成回答）',
+              title: '重新生成（用同一提问重新生成回答）',
               disabled: !can,
-              onClick: doRetry,
-            },
-              React.createElement('span', null, '↻'),
-              ' 重试'
-            )
+              onClick: doRe,
+            }, '↻ Re'),
+            React.createElement('button', {
+              className: 'lval5-act',
+              title: '从此处分支（创建对话版本分叉）',
+              disabled: !sessionsSvc || !sessId || seq == null,
+              onClick: doFork,
+            }, '⤴ Fork')
           )
         )
       }
