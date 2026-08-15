@@ -7,6 +7,7 @@ export default function () {
     apply(ctx) {
       const slots = ctx.get('slots')
       const sessionsSvc = ctx.get('sessions')
+      const themeSvc = ctx.get('theme')
       if (slots === undefined) return
 
       const NL = String.fromCharCode(10)
@@ -71,7 +72,7 @@ export default function () {
         '.lval3-num{color:var(--dsw-alias-state-warn-primary)}' +
         '.lval3-pre{color:var(--dsw-alias-state-error-primary)}' +
       '.lval5-um{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin:4px 0;padding:0 8px}' +
-      '.lval5-bubble{max-width:min(85%,720px);background:var(--dsw-alias-brand-primary,#0a66c2);color:#fff;border-radius:14px;border-bottom-right-radius:4px;padding:9px 14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.1)}' +
+      '.lval5-bubble{max-width:min(85%,720px);background:#2563eb;color:#fff;border-radius:14px;border-bottom-right-radius:4px;padding:9px 14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.1)}' +
       '.lval5-actions{display:inline-flex;align-items:center;gap:2px;font-size:12px}' +
       '.lval5-act{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;padding:3px 8px;border-radius:6px}' +
       '.lval5-act:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}' +
@@ -139,6 +140,23 @@ export default function () {
         const useSessionHook = props.useSession
         const snap = useSessionHook ? useSessionHook(function (s) { return s }) : null
         const inputActions = props.inputActions
+        const [scheme, setScheme] = React.useState(function () {
+          if (!themeSvc) return 'light'
+          try {
+            return themeSvc.getTheme().active.colorScheme
+          } catch (e) {
+            return 'light'
+          }
+        })
+        React.useEffect(function () {
+          if (!ctx || !themeSvc) return
+          return ctx.on('theme/change', function () {
+            try {
+              setScheme(themeSvc.getTheme().active.colorScheme)
+            } catch (e) { /* ignore */ }
+          })
+        }, [])
+        const bubbleBg = scheme === 'dark' ? '#3b82f6' : '#2563eb'
         let node = props.node || null
         if (!node && props && props.kind === 'user' && props.data) node = props
         const seq = node ? (node.anchorSeq != null ? node.anchorSeq : node.seq) : null
@@ -170,7 +188,7 @@ export default function () {
           } catch (e) { /* ignore */ }
         }
         return React.createElement('div', { className: 'lval5-um' },
-          React.createElement('div', { className: 'lval5-bubble' }, text !== '' ? text : NBSP),
+          React.createElement('div', { className: 'lval5-bubble', style: { background: bubbleBg, color: '#fff' } }, text !== '' ? text : NBSP),
           React.createElement('div', { className: 'lval5-actions' },
             React.createElement('button', {
               className: 'lval5-act',
