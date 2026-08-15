@@ -98,6 +98,9 @@ export default function () {
       '.lval6-act-del:hover{color:#f87171;background:rgba(248,113,113,.10)}' +
       '.lval6-act-del-armed{color:#fff;background:#f87171;width:auto;padding:0 8px;font-size:11px}' +
       '.lval6-act-del-armed:hover{color:#fff;background:#ef4444}' +
+      '.lval6-group{display:flex;align-items:center;gap:6px;padding:7px 8px 3px;cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:11.5px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;user-select:none}' +
+      '.lval6-group:hover{color:#4d6bfe}' +
+      '.lval6-group-n{font-weight:400;font-size:11px}' +
       '.lval6-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:999px;padding:5px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
       '.lval6-search-input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px}' +
       '.lval6-search-input::placeholder{color:var(--dsw-alias-label-secondary)}' +
@@ -283,6 +286,7 @@ export default function () {
         const [sessLoading, setSessLoading] = React.useState(true)
         const [sessQuery, setSessQuery] = React.useState('')
         const [expanded, setExpanded] = React.useState({})
+        const [groupsOpen, setGroupsOpen] = React.useState({ '今天': true, '昨天': true, '7天内': false, '30天内': false, '更早': false })
         const [delId, setDelId] = React.useState(null)
         const [editId, setEditId] = React.useState(null)
         const [editTitle, setEditTitle] = React.useState('')
@@ -627,6 +631,47 @@ export default function () {
         }
         const treeRows = roots.map(function (r) { return renderNode(r, 0) })
 
+        const groupOf = (t) => {
+          if (!t) return '更早'
+          const startToday = new Date()
+          startToday.setHours(0, 0, 0, 0)
+          const start = new Date(t)
+          start.setHours(0, 0, 0, 0)
+          const days = Math.round((startToday.getTime() - start.getTime()) / 86400000)
+          if (days <= 0) return '今天'
+          if (days === 1) return '昨天'
+          if (days < 7) return '7天内'
+          if (days < 30) return '30天内'
+          return '更早'
+        }
+        const groupOrder = ['今天', '昨天', '7天内', '30天内', '更早']
+        const rootsByGroup = {}
+        for (const r of roots) {
+          const g = groupOf(r.createdAt)
+          if (!rootsByGroup[g]) rootsByGroup[g] = []
+          rootsByGroup[g].push(r)
+        }
+        const groupSections = []
+        for (const g of groupOrder) {
+          const items = rootsByGroup[g]
+          if (!items || items.length === 0) continue
+          const open = !!groupsOpen[g]
+          groupSections.push(
+            React.createElement(React.Fragment, { key: g },
+              React.createElement('div', { className: 'lval6-group', onClick: function () {
+                const o = Object.assign({}, groupsOpen)
+                o[g] = !o[g]
+                setGroupsOpen(o)
+              } },
+                React.createElement('span', null, open ? '▾' : '▸'),
+                React.createElement('span', null, g),
+                React.createElement('span', { className: 'lval6-group-n' }, '(' + items.length + ')')
+              ),
+              open ? items.map(function (r) { return renderNode(r, 0) }) : null
+            )
+          )
+        }
+
         return React.createElement('div', { className: 'lval3-root' },
           React.createElement('div', { className: 'lval3-toolbar' },
             React.createElement('button', {
@@ -728,7 +773,9 @@ export default function () {
                           ? React.createElement('div', { className: 'lval3-empty' }, '加载会话列表…')
                           : shown.length === 0
                             ? React.createElement('div', { className: 'lval3-empty' }, sessions.length === 0 ? '暂无会话记录' : '没有匹配的会话')
-                            : React.createElement('div', { className: 'lval6-list' }, treeRows)
+                            : q !== ''
+                              ? React.createElement('div', { className: 'lval6-list' }, treeRows)
+                              : React.createElement('div', { className: 'lval6-list' }, groupSections)
                       )
                 )
               )
