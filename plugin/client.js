@@ -69,7 +69,11 @@ export default function () {
         '.lval3-str{color:var(--dsw-alias-state-success-primary)}' +
         '.lval3-com{color:var(--dsw-alias-label-secondary)}' +
         '.lval3-num{color:var(--dsw-alias-state-warn-primary)}' +
-        '.lval3-pre{color:var(--dsw-alias-state-error-primary)}'
+        '.lval3-pre{color:var(--dsw-alias-state-error-primary)}' +
+      '.lval4-actions{display:inline-flex;align-items:center;gap:2px;font-size:11.5px}' +
+      '.lval4-act{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;font-size:11.5px;padding:2px 6px;border-radius:6px}' +
+      '.lval4-act:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}' +
+      '.lval4-act:disabled{opacity:.4;cursor:default}'
       )
 
       const KEYWORDS = 'alignas alignof and and_eq asm auto bitand bitor bool break case catch char char8_t char16_t char32_t class co_await co_return co_yield compl concept const consteval constexpr constinit const_cast continue decltype default delete do double dynamic_cast else enum explicit export extern false float for friend goto if inline int long mutable namespace new noexcept not not_eq nullptr operator or or_eq private protected public register reinterpret_cast requires return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while xor xor_eq override final import module'.split(' ')
@@ -102,6 +106,37 @@ export default function () {
         }
       }
 
+      const nodeText = (node) => {
+        if (!node) return ''
+        const blocks = node.kind === 'assistant' ? node.blocks : node.content
+        if (!Array.isArray(blocks)) return ''
+        const parts = []
+        for (const b of blocks) {
+          if (b && typeof b.text === 'string' && b.text !== '') parts.push(b.text)
+        }
+        return parts.join(NL)
+      }
+
+      const findPrompt = (snap, targetId) => {
+        if (!snap || !Array.isArray(snap.nodes)) return ''
+        const nodes = snap.nodes
+        let idx = -1
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i] && nodes[i].kind === 'assistant' && nodes[i].messageId === targetId) {
+            idx = i
+            break
+          }
+        }
+        if (idx < 0) return ''
+        for (let j = idx - 1; j >= 0; j--) {
+          const n = nodes[j]
+          if (n && (n.kind === 'user' || n.kind === 'steering')) {
+            return nodeText(n)
+          }
+        }
+        return ''
+      }
+
       const CodeBlock = ({ content }) => {
         const lines = (content || '').split(NL)
         const rows = lines.map(function (ln, i) {
@@ -117,6 +152,46 @@ export default function () {
         })
         return React.createElement('div', { className: 'lval3-codewrap' },
           React.createElement('div', { className: 'lval3-codescroll' }, rows)
+        )
+      }
+
+      const ActionStrip = ({ messageId, useSession, inputActions }) => {
+        const snap = useSession ? useSession(function (s) { return s }) : null
+        const prompt = findPrompt(snap, messageId)
+        const running = !!(snap && snap.running)
+        const can = prompt !== '' && !running
+        const doModify = () => {
+          if (!can || !inputActions) return
+          try {
+            inputActions.setDraft(prompt)
+          } catch (e) { /* ignore */ }
+        }
+        const doRetry = () => {
+          if (!can || !inputActions) return
+          try {
+            inputActions.setDraft(prompt)
+            inputActions.submit()
+          } catch (e) { /* ignore */ }
+        }
+        return React.createElement('span', { className: 'lval4-actions' },
+          React.createElement('button', {
+            className: 'lval4-act',
+            title: '修改这条提问（回填输入框编辑后重发）',
+            disabled: !can,
+            onClick: doModify,
+          },
+            React.createElement('span', null, '✎'),
+            ' 修改'
+          ),
+          React.createElement('button', {
+            className: 'lval4-act',
+            title: '用同一提问重试（重新生成回答）',
+            disabled: !can,
+            onClick: doRetry,
+          },
+            React.createElement('span', null, '↻'),
+            ' 重试'
+          )
         )
       }
 
@@ -518,6 +593,13 @@ export default function () {
         return slots.register(
           { name: 'shell.overlay', id: 'lval-toolbar' },
           function () { return React.createElement(Toolbar, null) }
+        )
+      })
+
+      slots.inject('conversation.chat.assistant-actions', function () {
+        return slots.register(
+          { name: 'conversation.chat.assistant-actions', id: 'lval-actions', order: 20 },
+          function (props) { return React.createElement(ActionStrip, props) }
         )
       })
     },
