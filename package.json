@@ -1,0 +1,23 @@
+{
+  "name": "dsh-essential-tools",
+  "version": "1.0.0",
+  "description": "DSH 动态插件：代码查看器、VS2026 编译运行、代码版本快照/回退、历史对话会话管理（右侧工具栏，跟随系统主题）",
+  "type": "module",
+  "main": "plugin/host.js",
+  "files": [
+    "plugin",
+    "README.md",
+    "LICENSE"
+  ],
+  "author": "L2959159224@Outlook.com",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "cordis",
+    "plugin",
+    "vs2026",
+    "msbuild",
+    "code-viewer",
+    "version-management"
+  ]
+}

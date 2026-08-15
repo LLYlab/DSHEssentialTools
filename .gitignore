@@ -1,0 +1,19 @@
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+*.log
+
+# Visual Studio
+.vs/
+x64/
+Debug/
+Release/
+*.user
+
+# 本插件产生的版本快照
+.lval-versions/
+
+# 系统文件
+Thumbs.db
+.DS_Store
