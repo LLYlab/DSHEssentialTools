@@ -70,10 +70,12 @@ export default function () {
         '.lval3-com{color:var(--dsw-alias-label-secondary)}' +
         '.lval3-num{color:var(--dsw-alias-state-warn-primary)}' +
         '.lval3-pre{color:var(--dsw-alias-state-error-primary)}' +
-      '.lval4-actions{display:inline-flex;align-items:center;gap:2px;font-size:11.5px}' +
-      '.lval4-act{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;font-size:11.5px;padding:2px 6px;border-radius:6px}' +
-      '.lval4-act:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}' +
-      '.lval4-act:disabled{opacity:.4;cursor:default}'
+      '.lval5-um{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin:4px 0}' +
+      '.lval5-bubble{max-width:86%;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l1);border-radius:12px;padding:6px 10px;white-space:pre-wrap;word-break:break-word;font-size:12.5px}' +
+      '.lval5-actions{display:inline-flex;align-items:center;gap:2px;font-size:11.5px}' +
+      '.lval5-act{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;font-size:11.5px;padding:2px 6px;border-radius:6px}' +
+      '.lval5-act:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}' +
+      '.lval5-act:disabled{opacity:.4;cursor:default}'
       )
 
       const KEYWORDS = 'alignas alignof and and_eq asm auto bitand bitor bool break case catch char char8_t char16_t char32_t class co_await co_return co_yield compl concept const consteval constexpr constinit const_cast continue decltype default delete do double dynamic_cast else enum explicit export extern false float for friend goto if inline int long mutable namespace new noexcept not not_eq nullptr operator or or_eq private protected public register reinterpret_cast requires return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while xor xor_eq override final import module'.split(' ')
@@ -106,35 +108,13 @@ export default function () {
         }
       }
 
-      const nodeText = (node) => {
-        if (!node) return ''
-        const blocks = node.kind === 'assistant' ? node.blocks : node.content
+      const textOfBlocks = (blocks) => {
         if (!Array.isArray(blocks)) return ''
         const parts = []
         for (const b of blocks) {
           if (b && typeof b.text === 'string' && b.text !== '') parts.push(b.text)
         }
         return parts.join(NL)
-      }
-
-      const findPrompt = (snap, targetId) => {
-        if (!snap || !Array.isArray(snap.nodes)) return ''
-        const nodes = snap.nodes
-        let idx = -1
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i] && nodes[i].kind === 'assistant' && nodes[i].messageId === targetId) {
-            idx = i
-            break
-          }
-        }
-        if (idx < 0) return ''
-        for (let j = idx - 1; j >= 0; j--) {
-          const n = nodes[j]
-          if (n && (n.kind === 'user' || n.kind === 'steering')) {
-            return nodeText(n)
-          }
-        }
-        return ''
       }
 
       const CodeBlock = ({ content }) => {
@@ -155,42 +135,61 @@ export default function () {
         )
       }
 
-      const ActionStrip = ({ messageId, useSession, inputActions }) => {
-        const snap = useSession ? useSession(function (s) { return s }) : null
-        const prompt = findPrompt(snap, messageId)
+      const UserMessageActions = (props) => {
+        const useSessionHook = props.useSession
+        const snap = useSessionHook ? useSessionHook(function (s) { return s }) : null
+        const inputActions = props.inputActions
+        let node = props.node || null
+        if (!node && props && props.kind === 'user' && props.data) node = props
+        const seq = node ? (node.anchorSeq != null ? node.anchorSeq : node.seq) : null
+        let content = null
+        if (node && node.data && Array.isArray(node.data.content)) content = node.data.content
+        if (!content && node && Array.isArray(node.content)) content = node.content
+        if (!content && snap && seq != null && Array.isArray(snap.nodes)) {
+          for (const n of snap.nodes) {
+            if (n && n.kind === 'user' && n.seq === seq && Array.isArray(n.content)) {
+              content = n.content
+              break
+            }
+          }
+        }
+        const text = textOfBlocks(content)
         const running = !!(snap && snap.running)
-        const can = prompt !== '' && !running
+        const can = text !== '' && !running
         const doModify = () => {
           if (!can || !inputActions) return
           try {
-            inputActions.setDraft(prompt)
+            inputActions.setDraft(text)
           } catch (e) { /* ignore */ }
         }
         const doRetry = () => {
           if (!can || !inputActions) return
           try {
-            inputActions.setDraft(prompt)
+            inputActions.setDraft(text)
             inputActions.submit()
           } catch (e) { /* ignore */ }
         }
-        return React.createElement('span', { className: 'lval4-actions' },
-          React.createElement('button', {
-            className: 'lval4-act',
-            title: '修改这条提问（回填输入框编辑后重发）',
-            disabled: !can,
-            onClick: doModify,
-          },
-            React.createElement('span', null, '✎'),
-            ' 修改'
-          ),
-          React.createElement('button', {
-            className: 'lval4-act',
-            title: '用同一提问重试（重新生成回答）',
-            disabled: !can,
-            onClick: doRetry,
-          },
-            React.createElement('span', null, '↻'),
-            ' 重试'
+        return React.createElement('div', { className: 'lval5-um' },
+          React.createElement('div', { className: 'lval5-bubble' }, text !== '' ? text : NBSP),
+          React.createElement('div', { className: 'lval5-actions' },
+            React.createElement('button', {
+              className: 'lval5-act',
+              title: '修改这条提问（回填输入框编辑后重发）',
+              disabled: !can,
+              onClick: doModify,
+            },
+              React.createElement('span', null, '✎'),
+              ' 修改'
+            ),
+            React.createElement('button', {
+              className: 'lval5-act',
+              title: '用同一提问重试（重新生成回答）',
+              disabled: !can,
+              onClick: doRetry,
+            },
+              React.createElement('span', null, '↻'),
+              ' 重试'
+            )
           )
         )
       }
@@ -596,10 +595,10 @@ export default function () {
         )
       })
 
-      slots.inject('conversation.chat.assistant-actions', function () {
+      slots.inject('conversation.chat.node', function () {
         return slots.register(
-          { name: 'conversation.chat.assistant-actions', id: 'lval-actions', order: 20 },
-          function (props) { return React.createElement(ActionStrip, props) }
+          { name: 'conversation.chat.node', key: 'user' },
+          function (props) { return React.createElement(UserMessageActions, props) }
         )
       })
     },
