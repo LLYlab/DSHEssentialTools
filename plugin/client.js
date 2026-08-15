@@ -76,7 +76,31 @@ export default function () {
       '.lval5-actions{display:inline-flex;align-items:center;gap:2px;font-size:12px}' +
       '.lval5-act{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;padding:3px 8px;border-radius:6px}' +
       '.lval5-act:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}' +
-      '.lval5-act:disabled{opacity:.4;cursor:default}'
+      '.lval5-act:disabled{opacity:.4;cursor:default}' +
+      '.lval6-list{display:flex;flex-direction:column;gap:2px}' +
+      '.lval6-sess{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;transition:background .12s}' +
+      '.lval6-sess:hover{background:var(--dsw-alias-bg-layer-2)}' +
+      '.lval6-sess-cur{background:rgba(77,107,254,.10);box-shadow:inset 2px 0 0 #4d6bfe}' +
+      '.lval6-sess-cur:hover{background:rgba(77,107,254,.16)}' +
+      '.lval6-sess-ico{width:30px;height:30px;border-radius:9px;background:var(--dsw-alias-bg-layer-2);display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:none}' +
+      '.lval6-sess-main{flex:1;min-width:0}' +
+      '.lval6-sess-title{font-size:13.5px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}' +
+      '.lval6-sess-time{font-size:11.5px;color:var(--dsw-alias-label-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.lval6-sess-acts{display:none;align-items:center;gap:4px;flex:none;padding-left:4px}' +
+      '.lval6-sess:hover .lval6-sess-acts{display:inline-flex}' +
+      '.lval6-act{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;border-radius:6px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1}' +
+      '.lval6-act:hover{color:#4d6bfe;background:rgba(77,107,254,.10)}' +
+      '.lval6-search{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:999px;padding:5px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}' +
+      '.lval6-search-input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px}' +
+      '.lval6-search-input::placeholder{color:var(--dsw-alias-label-secondary)}' +
+      '.lval6-btn-mini{background:none;border:1px solid var(--dsw-alias-border-l1);border-radius:999px;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;flex:none}' +
+      '.lval6-btn-mini:hover{color:#4d6bfe;border-color:#4d6bfe}' +
+      '.lval6-btn-mini:disabled{opacity:.5;cursor:default}' +
+      '.lval6-input{flex:1;min-width:0;background:var(--dsw-alias-bg-base);border:1px solid #4d6bfe;border-radius:8px;color:var(--dsw-alias-label-primary);padding:5px 9px;font:inherit;font-size:12.5px;outline:none}' +
+      '.lval6-btn{background:#4d6bfe;border:none;color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap}' +
+      '.lval6-btn:hover{opacity:.9}' +
+      '.lval6-btn-ghost{background:none;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap}' +
+      '.lval6-btn-ghost:hover{color:var(--dsw-alias-label-primary)}'
       )
 
       const KEYWORDS = 'alignas alignof and and_eq asm auto bitand bitor bool break case catch char char8_t char16_t char32_t class co_await co_return co_yield compl concept const consteval constexpr constinit const_cast continue decltype default delete do double dynamic_cast else enum explicit export extern false float for friend goto if inline int long mutable namespace new noexcept not not_eq nullptr operator or or_eq private protected public register reinterpret_cast requires return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while xor xor_eq override final import module'.split(' ')
@@ -214,7 +238,10 @@ export default function () {
         )
       }
 
-      const Toolbar = () => {
+      const Toolbar = (props) => {
+        const useSessionsHook = props && props.useSessions
+        const listState = useSessionsHook ? useSessionsHook(function (s) { return s }) : null
+        const curId = listState ? listState.current : null
         const [panel, setPanel] = React.useState(null)
         const [ptab, setPtab] = React.useState('code')
         const [info, setInfo] = React.useState(null)
@@ -233,6 +260,7 @@ export default function () {
         const [confirmVer, setConfirmVer] = React.useState(null)
         const [sessions, setSessions] = React.useState([])
         const [sessLoading, setSessLoading] = React.useState(true)
+        const [sessQuery, setSessQuery] = React.useState('')
         const [editId, setEditId] = React.useState(null)
         const [editTitle, setEditTitle] = React.useState('')
         const [sessMsg, setSessMsg] = React.useState(null)
@@ -385,7 +413,7 @@ export default function () {
           }
           try {
             sessionsSvc.open(id)
-            setSessMsg({ ok: true, text: '✓ 已重新启用会话 ' + id })
+            setSessMsg(null)
           } catch (e) {
             setSessMsg({ ok: false, text: '✗ ' + String(e && e.message ? e.message : e) })
           }
@@ -398,7 +426,7 @@ export default function () {
           }
           setSessMsg(null)
           sessionsSvc.fork({ sessionId: id, increaseTitle: true }).then(function (newId) {
-            setSessMsg({ ok: true, text: '✓ 已复制会话 ' + id + ' → ' + newId })
+            setSessMsg(null)
             if (newId) {
               try {
                 sessionsSvc.open(newId)
@@ -416,7 +444,7 @@ export default function () {
             if (r && r.ok) {
               setEditId(null)
               setEditTitle('')
-              setSessMsg({ ok: true, text: '✓ 已重命名' })
+              setSessMsg(null)
               loadSessions()
             } else {
               setSessMsg({ ok: false, text: '✗ ' + ((r && r.error) || '重命名失败') })
@@ -449,32 +477,52 @@ export default function () {
           )
         })
 
-        const sessRows = sessions.map(function (s) {
+        const q = sessQuery.trim().toLowerCase()
+        const shown = q === '' ? sessions : sessions.filter(function (s) {
+          return ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.id || '').toLowerCase().indexOf(q) !== -1)
+        })
+        const sessRows = shown.map(function (s) {
           if (editId === s.id) {
-            return React.createElement('div', { key: s.id, className: 'lval3-ver' },
+            return React.createElement('div', { key: s.id, className: 'lval6-sess' },
               React.createElement('input', {
-                className: 'lval3-input',
+                className: 'lval6-input',
                 value: editTitle,
                 onChange: function (e) { setEditTitle(e.target.value) },
               }),
-              React.createElement('button', { className: 'lval3-btn-mini', onClick: function () { saveRename(s.id) } }, '确定'),
-              React.createElement('button', { className: 'lval3-btn-mini', onClick: function () { setEditId(null) } }, '取消')
+              React.createElement('button', { className: 'lval6-btn', onClick: function () { saveRename(s.id) } }, '确定'),
+              React.createElement('button', { className: 'lval6-btn-ghost', onClick: function () { setEditId(null) } }, '取消')
             )
           }
-          return React.createElement('div', { key: s.id, className: 'lval3-ver' },
-            React.createElement('div', { className: 'lval3-ver-main' },
-              React.createElement('div', { className: 'lval3-ver-title' }, s.title),
-              React.createElement('div', { className: 'lval3-ver-sub' }, s.id + (s.live ? ' · 运行中' : '') + ' · ' + fmtTime(s.createdAt))
+          const isCur = curId === s.id
+          return React.createElement('div', {
+            key: s.id,
+            className: 'lval6-sess' + (isCur ? ' lval6-sess-cur' : ''),
+            onClick: function () { openSession(s.id) },
+          },
+            React.createElement('span', { className: 'lval6-sess-ico' }, '💬'),
+            React.createElement('div', { className: 'lval6-sess-main' },
+              React.createElement('div', { className: 'lval6-sess-title' }, s.title),
+              React.createElement('div', { className: 'lval6-sess-time' }, fmtTime(s.createdAt) + (s.live ? ' · 运行中' : ''))
             ),
-            React.createElement('button', { className: 'lval3-btn-mini', onClick: function () { openSession(s.id) } }, '打开'),
-            React.createElement('button', { className: 'lval3-btn-mini', onClick: function () { forkSession(s.id) } }, '复制'),
-            React.createElement('button', {
-              className: 'lval3-btn-mini',
-              onClick: function () {
-                setEditId(s.id)
-                setEditTitle(s.title)
-              },
-            }, '重命名')
+            React.createElement('span', { className: 'lval6-sess-acts' },
+              React.createElement('button', {
+                className: 'lval6-act',
+                title: '重命名',
+                onClick: function (e) {
+                  e.stopPropagation()
+                  setEditId(s.id)
+                  setEditTitle(s.title)
+                },
+              }, '✎'),
+              React.createElement('button', {
+                className: 'lval6-act',
+                title: '复制会话',
+                onClick: function (e) {
+                  e.stopPropagation()
+                  forkSession(s.id)
+                },
+              }, '⧉')
+            )
           )
         })
 
@@ -563,15 +611,23 @@ export default function () {
                       )
                     : React.createElement(React.Fragment, null,
                         React.createElement('div', { className: 'lval3-row' },
-                          React.createElement('button', { className: 'lval3-btn', disabled: sessLoading, onClick: loadSessions }, sessLoading ? '加载中…' : '刷新会话'),
-                          React.createElement('span', { className: 'lval3-ver-sub' }, '重新启用 / 更改 / 复制 之前的对话')
+                          React.createElement('div', { className: 'lval6-search' },
+                            React.createElement('span', null, '🔍'),
+                            React.createElement('input', {
+                              className: 'lval6-search-input',
+                              placeholder: '搜索对话',
+                              value: sessQuery,
+                              onChange: function (e) { setSessQuery(e.target.value) },
+                            })
+                          ),
+                          React.createElement('button', { className: 'lval6-btn-mini', disabled: sessLoading, onClick: loadSessions, title: '刷新' }, '↻')
                         ),
                         sessMsg ? React.createElement('div', { className: msgCls(sessMsg) }, msgText(sessMsg)) : null,
                         sessLoading
                           ? React.createElement('div', { className: 'lval3-empty' }, '加载会话列表…')
-                          : sessions.length === 0
-                            ? React.createElement('div', { className: 'lval3-empty' }, '暂无会话记录')
-                            : React.createElement('div', { className: 'lval3-files' }, sessRows)
+                          : shown.length === 0
+                            ? React.createElement('div', { className: 'lval3-empty' }, sessions.length === 0 ? '暂无会话记录' : '没有匹配的会话')
+                            : React.createElement('div', { className: 'lval6-list' }, sessRows)
                       )
                 )
               )
@@ -611,7 +667,7 @@ export default function () {
       slots.inject('shell.overlay', function () {
         return slots.register(
           { name: 'shell.overlay', id: 'lval-toolbar' },
-          function () { return React.createElement(Toolbar, null) }
+          function (props) { return React.createElement(Toolbar, props) }
         )
       })
 
