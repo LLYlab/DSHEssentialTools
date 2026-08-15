@@ -72,7 +72,7 @@ export default function () {
         '.lval3-num{color:var(--dsw-alias-state-warn-primary)}' +
         '.lval3-pre{color:var(--dsw-alias-state-error-primary)}' +
       '.lval5-um{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin:4px 0;padding:0 8px}' +
-      '.lval5-bubble{max-width:min(85%,720px);background:#2563eb;color:#fff;border-radius:14px;border-bottom-right-radius:4px;padding:9px 14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.1)}' +
+      '.lval5-bubble{max-width:min(85%,720px);background:#93c5fd;color:#1e3a8a;border-radius:14px;border-bottom-right-radius:4px;padding:9px 14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.1)}' +
       '.lval5-actions{display:inline-flex;align-items:center;gap:2px;font-size:12px}' +
       '.lval5-act{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;padding:3px 8px;border-radius:6px}' +
       '.lval5-act:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}' +
@@ -156,7 +156,9 @@ export default function () {
             } catch (e) { /* ignore */ }
           })
         }, [])
-        const bubbleBg = scheme === 'dark' ? '#3b82f6' : '#2563eb'
+        const bubbleStyle = scheme === 'dark'
+          ? { background: '#3b82f6', color: '#ffffff' }
+          : { background: '#93c5fd', color: '#1e3a8a' }
         let node = props.node || null
         if (!node && props && props.kind === 'user' && props.data) node = props
         const seq = node ? (node.anchorSeq != null ? node.anchorSeq : node.seq) : null
@@ -188,7 +190,7 @@ export default function () {
           } catch (e) { /* ignore */ }
         }
         return React.createElement('div', { className: 'lval5-um' },
-          React.createElement('div', { className: 'lval5-bubble', style: { background: bubbleBg, color: '#fff' } }, text !== '' ? text : NBSP),
+          React.createElement('div', { className: 'lval5-bubble', style: bubbleStyle }, text !== '' ? text : NBSP),
           React.createElement('div', { className: 'lval5-actions' },
             React.createElement('button', {
               className: 'lval5-act',
