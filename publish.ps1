@@ -1,7 +1,7 @@
-# DSHEssentialTools 一键发布脚本
-# 在「你自己的」PowerShell 终端中运行（不是 DSH 对话沙箱，沙箱没有外网）
+# DSHEssentialTools 一键发布脚本（GitHub + npm）
+# 在「你自己的」PowerShell 终端中运行（不是 DSH 对话沙箱，沙箱没有外网/凭证）
 # 用法：
-#   cd C:\Users\L2959\Desktop\项目\LVAL\DSHEssentialTools
+#   cd <本仓库目录>（含 package.json）
 #   .\publish.ps1
 # 或手动执行下面注释里的步骤。
 
@@ -22,10 +22,37 @@ if ($LASTEXITCODE -ne 0) {
   gh auth login --hostname github.com --git-protocol https --web
 }
 
-# 3. 进入仓库目录并创建远程仓库 + 推送
+# 3. npm 登录（一次性；后续发布需保持 npm token）
+if (-not (npm whoami 2>$null)) {
+  Write-Host "== 登录 npm（请按提示完成）==" -ForegroundColor Cyan
+  npm login
+}
+
+# 4. 进入仓库目录，确认依赖并打包校验
 Set-Location $PSScriptRoot
-Write-Host "== 创建仓库 DSHEssentialTools 并推送 ==" -ForegroundColor Cyan
-gh repo create DSHEssentialTools --public --source . --remote origin --push
+if (-not (Test-Path "node_modules")) { Write-Host "== 安装依赖 ==" -ForegroundColor Cyan; npm install }
+
+# 5. 版本号提升（可选：手动改 package.json 后跳过）
+Write-Host "== 版本号（当前 $(node -p "require('./package.json').version")）==" -ForegroundColor Cyan
+$bump = Read-Host "输入版本提升方式 (patch/minor/major)，直接回车跳过"
+if ($bump) { npm version $bump --no-git-tag-version }
+
+# 6. 发布到 npm（包名 dsh-essential-tools 需未被占用）
+Write-Host "== 发布到 npm ==" -ForegroundColor Cyan
+npm publish
+
+# 7. 创建 GitHub 远程仓库并推送（已存在则直接推送）
+Set-Location $PSScriptRoot
+$hasRemote = (git remote) -match '^origin$'
+if (-not $hasRemote) {
+  Write-Host "== 创建仓库 DSHEssentialTools 并推送 ==" -ForegroundColor Cyan
+  gh repo create DSHEssentialTools --public --source . --remote origin --push
+} else {
+  Write-Host "== 推送到已有远程仓库 ==" -ForegroundColor Cyan
+  git push -u origin main
+}
 
 Write-Host ""
-Write-Host "✔ 发布完成：https://github.com/LLYlab/DSHEssentialTools" -ForegroundColor Green
+Write-Host "✔ 发布完成：" -ForegroundColor Green
+Write-Host "  npm:    https://www.npmjs.com/package/dsh-essential-tools" -ForegroundColor Green
+Write-Host "  GitHub: https://github.com/LLYlab/DSHEssentialTools" -ForegroundColor Green

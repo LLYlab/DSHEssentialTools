@@ -1,23 +1,40 @@
 {
   "name": "dsh-essential-tools",
-  "version": "1.0.0",
-  "description": "DSH 动态插件：代码查看器、VS2026 编译运行、代码版本快照/回退、历史对话会话管理（右侧工具栏，跟随系统主题）",
+  "version": "2.0.0",
+  "description": "DSH 永久插件：LVAL 工程工具（编译/运行/代码查看/程序版本快照回退）+ 对话树（会话血缘树/会话内分支）+ 版本管理（程序大版本/对话消息小版本，含回退开关）",
   "type": "module",
-  "main": "plugin/host.js",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
   "files": [
-    "plugin",
+    "lib",
     "README.md",
     "LICENSE"
   ],
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.1-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
   "author": "L2959159224@Outlook.com",
   "license": "MIT",
   "keywords": [
     "dsh",
+    "deepseek-harness",
     "cordis",
     "plugin",
-    "vs2026",
-    "msbuild",
+    "conversation-tree",
+    "branch",
+    "version-management",
+    "snapshot",
     "code-viewer",
-    "version-management"
+    "msbuild"
   ]
 }
