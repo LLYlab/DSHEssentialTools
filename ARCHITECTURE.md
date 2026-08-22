@@ -8,17 +8,31 @@
 
 ## 0. 技术底座实证（已在本机运行时核实）
 
-以下 API 均从已安装包源码核实，是实现的硬依据：
+以下 API 均从已安装包源码核实，是实现的硬依据。
+
+### 0.1 关键结论：永久包的 RPC 机制 ≠ 动态插件的 RPC 机制
+
+| | 动态插件（cordis_define） | **永久 npm 包（本插件采用）** |
+|---|---|---|
+| Host 注册处理器 | `harness.handle(method, fn)`（仅 vm 沙箱提供，见 `dsh-cordis-host-runner`） | **`TypertRemoteService` 子类**（纯 JS，构造时自动建立 `typertRemote` 绑定）+ **`ctx.typert.register({package, face:'host', invocations})`** 注册 strict 描述符 |
+| Client 调用 | `host.call(method, args)`（仅动态 runner 提供） | **`ctx.connection.rpc.call('/api', 'namespace/method', {args})`**（或 `ctx.remote.$mount` 后 `ctx.remote.<ns>.<method>(...)`） |
+| 网关 | 动态 runner 专用通道 | `dsh-api-gateway` 的 `typertGateway` 拦截 `/api`：`ctx.typert.local` 命中 → `receiver = ctx.get(service)` → 调 `implementation ?? method` |
+| codec | JSON 直通 | 描述符 `codec: {mode:'src-json'}` 免 schema；client 侧 strict codec 可手写 `{mode:'strict', typeSymbol:'json', schema:{parse:(v)=>v}}`（网关只调 `.parse`） |
+| 生成器 | 不需要 | **不需要**：`src-json` codec + strict 描述符全部手写可行（`@Remote` 装饰器是 TS 生成器路径，纯 JS 走 strict 注册） |
+
+**实证文件**：`dsh-cordis-host-runner/lib/index.js`（harness 沙箱）、`dsh-api-gateway/lib/index.js`（typertGateway：`resolveDescriptor`→`resolveReceiverContext`→`validateBinding`→`Reflect.apply(method, receiver, args)`）、`dsh-api-gateway/lib/client.js`（`$mount` + `connection.rpc.call`）、`dsh-typert-protocol/lib/index.js`（`TypertRemoteService`/`bindTypertRemote`/`remoteMethods`）、`dsh-typert-registry`（`ctx.typert.register`/`remotes`）。
+
+### 0.2 其它能力实证
 
 | 能力 | 实证 API | 出处 |
 |---|---|---|
-| 存储域 | `ctx.storageDomain.open(spec)` → `domain.table(name).put/get/delete/update`、`domain.global`、`domain/changed` 事件；调用方持有句柄并 `close()`（挂 `ctx.effect` disposer） | `@deepseek-ai/dsh-storage-domain`（web profile 已装，backend `json` → `~/.dsh/storages`） |
-| 重新生成注入 | `ctx.agents.get(sessionId)` → `agent.followup(msg)`（排队 next-turn 并唤醒 driver）/ `agent.inject(msg)`（next-step 不唤醒）/ `agent.inbox.splice(...)` / `agent.cancel(...)` | `@deepseek-ai/dsh-agent` README（`ctx.agents` 注册表 + `Agent` 公开方法） |
+| 存储域 | `ctx.storageDomain.open(spec)` → `domain.table(name).put/get/delete/update`、`domain.global`、`domain/changed`；调用方持有句柄并 `close()`（挂 `ctx.effect` disposer） | `@deepseek-ai/dsh-storage-domain`（web profile 已装，backend `json` → `~/.dsh/storages`） |
+| 重新生成注入 | `ctx.agents.get(sessionId)` → `agent.followup(msg)`（排队 next-turn 并唤醒 driver）/ `agent.inject(msg)` / `agent.inbox.splice(...)` / `agent.cancel(...)` | `@deepseek-ai/dsh-agent` README（`ctx.agents` 注册表 + `Agent` 公开方法） |
 | 血缘查询 | `sessionQuery.traceSession()`（祖先+后代树）、`listSessions()`、`readTitleSnapshots()` | `@deepseek-ai/dsh-session-query` |
 | fork | `sessions.fork(source, boundary?, childId?)` → header 记 `parentSession/seedLength/delegationDepth` | `@deepseek-ai/dsh-session` |
 | 会话日志 | 追加式事件 + `surfaceOp: replace` 遮蔽旧面；小版本存内容快照即可，不依赖回放 | `@deepseek-ai/dsh-session` |
 | 插件配置 | 简单对象形式 `apply(ctx, config)`；包形式 `static Config = z.object({...})` + `constructor(ctx, config)`（schemastery 校验） | `@deepseek-ai/dsh-session-persistence-jsonl` |
-| client 半区注册 | package.json `"dsh": {"client": {"platform": "web", "inject": [...]}}` **且** exports 必须提供 `"./client"`（→ `lib/client.js`）；由 `dsh-client-modules` 扫描并服务 `/plugins/<id>/client.js` | `@deepseek-ai/dsh-client-modules` + `dsh-client-ui-conversation/package.json` |
+| client 半区注册 | package.json `"dsh": {"client": {"platform": "web"}}` **且** exports 必须提供 `"./client"`（→ `lib/client.js`）；由 `dsh-client-modules` 扫描并服务 `/plugins/<id>/client.js` | `@deepseek-ai/dsh-client-modules` + `dsh-client-ui-conversation/package.json` |
 | UI 插槽 | sidebar：`sidebar.brand.mark/name`、`sidebar.workspaces`（列表）、`sidebar.settings`、`sidebar.footer.action`；会话视图环：`conversation.view`（ui-trajectory 同机制注册标签）；消息操作：`conversation.chat.turnTail` 链（IconActions 前）；全屏浮层：`shell.overlay`（现工具栏已用） | `@deepseek-ai/dsh-client-ui-sidebar`、`dsh-client-ui-conversation` README |
 
 ---
@@ -46,10 +60,10 @@
 
 ```
 dsh-essential-tools/
-├── package.json          # dsh.client 注册 + exports "./client"
+├── package.json          # dsh.client 注册 + exports "./client" + 依赖 @deepseek-ai/dsh-typert-protocol
 ├── lib/
-│   ├── index.js          # Host 半区：服务、RPC、存储域
-│   └── client.js         # Client 半区：React UI（React.createElement，无 JSX/TS）
+│   ├── index.js          # Host 半区：TypertRemoteService 子类 + ctx.typert.register + 存储域
+│   └── client.js         # Client 半区：React UI（React.createElement，无 JSX/TS）+ connection.rpc.call
 ├── README.md             # 功能/安装/配置/发布说明
 ├── LICENSE
 ├── ARCHITECTURE.md       # 本文档
@@ -61,6 +75,7 @@ dsh-essential-tools/
 ```jsonc
 {
   "name": "dsh-essential-tools",
+  "version": "2.0.0",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -69,6 +84,9 @@ dsh-essential-tools/
   },
   "files": ["lib", "README.md", "LICENSE"],
   "dsh": { "client": { "platform": "web" } },  // ← 被 dsh-client-modules 扫描
+  "dependencies": {
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.1-rc.2"   // Host RPC 基座
+  },
   "keywords": ["dsh", "cordis", "plugin", "conversation-tree", "version-management", "deepseek-harness"]
 }
 ```
@@ -133,23 +151,58 @@ dsh-essential-tools/
 
 ---
 
-## 4. RPC API（Host ↔ Client，harness.handle / host.call）
+## 4. RPC API（typert Remote，Host↔Client）
 
-统一返回 `{ok, error?, ...}`；方法名 `dsh-<域>-<动作>`：
+统一返回 `{ok, error?, ...}`；Host 半区为 `dshEssentialTools` 服务（`TypertRemoteService` 子类），
+client 经 `ctx.connection.rpc.call('/api', 'dshEssentialTools/<method>', {args})` 调用：
 
-| 域 | 方法 | 说明 |
+| 域 | 端点（namespace/method） | 说明 |
 |---|---|---|
-| tree | `dsh-tree-list` | 会话 + 血缘 + 分支摘要（一次拉全量，树在客户端渲染） |
-| branch | `dsh-branch-create` | `{sessionId, anchorSeq, kind: 'fork-child'\|'virtual', label?}` |
-| | `dsh-branch-switch` | `{sessionId, branchId}` |
-| | `dsh-branch-list` / `dsh-branch-rename` / `dsh-branch-delete` | 分支管理 |
-| msg | `dsh-msg-edit` | `{sessionId, messageId, newText}` → 追加消息 + surface replace + 记小版本 |
-| | `dsh-msg-regenerate` | `{sessionId, messageId}` → 建虚拟分支 + `agent.followup` 重答 |
-| | `dsh-msg-rollback` | `{sessionId, messageId}` → 按开关回退（开=最近小版本，关=原始版） |
-| ver | `dsh-ver-minor-list` / `dsh-ver-minor-compare` / `dsh-ver-minor-restore` | 消息版本历史/diff/恢复 |
-| | `dsh-ver-prog-*` | 程序版本（沿用 lval-ver-* 逻辑） |
-| | `dsh-ver-toggle-get` / `dsh-ver-toggle-set` | 开关读写（settings 表 + 面板 UI） |
-| lval | `lval-info/list-files/read-file/build/run/build-run` | 原 LVAL 工具，保留不动 |
+| tree | `dshEssentialTools/treeList` | 会话 + 血缘 + 分支摘要（一次拉全量，树在客户端渲染） |
+| branch | `dshEssentialTools/branchCreate` | `{sessionId, anchorSeq, kind: 'fork-child'\|'virtual', label?}` |
+| | `dshEssentialTools/branchSwitch` | `{sessionId, branchId}` |
+| | `dshEssentialTools/branchList` / `branchRename` / `branchDelete` | 分支管理 |
+| msg | `dshEssentialTools/msgEdit` | `{sessionId, messageId, newText}` → 追加消息 + surface replace + 记小版本 |
+| | `dshEssentialTools/msgRegenerate` | `{sessionId, messageId}` → 建虚拟分支 + `agent.followup` 重答 |
+| | `dshEssentialTools/msgRollback` | `{sessionId, messageId}` → 按开关回退（开=最近小版本，关=原始版） |
+| ver | `dshEssentialTools/verMinorList` / `verMinorCompare` / `verMinorRestore` | 消息版本历史/diff/恢复 |
+| | `dshEssentialTools/verProgList` / `verProgCreate` / `verProgRestore` / `verProgDelete` | 程序版本（沿用 lval-ver-* 逻辑） |
+| | `dshEssentialTools/verToggleGet` / `verToggleSet` | 开关读写（settings 表 + 面板 UI） |
+| lval | `lvalInfo` / `lvalListFiles` / `lvalReadFile` / `lvalBuild` / `lvalRun` / `lvalBuildRun` | 原 LVAL 工具，保留不动 |
+
+**Host 注册骨架（纯 JS，已实证）**：
+
+```js
+import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
+
+class EssentialToolsService extends TypertRemoteService {
+  constructor(ctx, config) {
+    super(ctx, "dshEssentialTools");   // 自动注册服务 + typertRemote 绑定
+    this.config = config;
+  }
+  async treeList(args) { /* ... */ return { ok: true, ... }; }
+}
+
+function apply(ctx, config) {
+  new EssentialToolsService(ctx, config);
+  ctx.typert.register({
+    package: "dsh-essential-tools", face: "host", model: {}, schemas: [],
+    invocations: [{
+      id: "et-tree-list",
+      service: "dshEssentialTools", namespace: "dshEssentialTools", method: "treeList",
+      parameters: [{ name: "args", wire: "args", source: "json", codec: { mode: "src-json" } }],
+      result: { mode: "src-json" },
+      invocation: { kind: "direct" },
+    }, /* ...每个端点一条... */],
+  });
+}
+```
+
+**Client 调用骨架**：
+
+```js
+// ctx.get("connection") → connection.rpc.call("/api", "dshEssentialTools/treeList", { args: {...} })
+```
 
 ---
 
@@ -168,9 +221,9 @@ dsh-essential-tools/
 
 1. **纯 ESM JavaScript**；Client 一律 `React.createElement`，禁用 JSX/TS/import 变换。
 2. **服务访问**：可选服务 `ctx.get()` 并处理 undefined；硬依赖才 `inject`。
-3. **生命周期**：所有副作用（监听、定时器、插槽、样式、打开的 domain）挂 `ctx.effect()` / `ctx.on()`，可逆。
+3. **生命周期**：所有副作用（监听、定时器、插槽、样式、打开的 domain、typert 注册）挂 `ctx.effect()` / `ctx.on()`，可逆。
 4. **配置**：`apply(ctx, config)` 读校验后的 config；包级 schema 用 schemastery `z.object`；所有路径/常量走 config，禁硬编码。
-5. **RPC**：`harness.handle('dsh-<域>-<动作>', ...)`；返回 `{ok, error, ...}`；参数校验失败返回 error 而非抛异常。
+5. **RPC**：Host 用 `TypertRemoteService` 子类 + `ctx.typert.register`（src-json codec）；Client 用 `ctx.connection.rpc.call('/api', ...)`；返回 `{ok, error, ...}`；参数校验失败返回 error 而非抛异常。**不要用 `harness.handle`/`host.call`（那是动态插件沙箱专属，永久包没有）。**
 6. **存储**：`defineDomain` 声明带版本号的域；写失败不改内存（域层保证）；只经 domain 句柄读写，不直碰后端文件。
 7. **错误**：宿主错误消息用中文，携带稳定 code（如 `SESSION_NOT_LOADED`）。
 8. **风格**：沿用现有 host.js/client.js 的写法（小函数、纯逻辑、一次性创建 React 元素树）。
@@ -191,7 +244,7 @@ dsh-essential-tools/
 
 | 阶段 | 内容 | 验收 |
 |---|---|---|
-| M0 | 包结构重构：host/client 拆入 lib/、package.json `dsh.client`+exports、路径配置化 | 本地装入 web profile，重启常驻，工具栏可用 |
+| M0 | 包结构重构：host/client 拆入 lib/、package.json `dsh.client`+exports、路径配置化、typert RPC 骨架 | 本地装入 web profile，重启常驻，工具栏可用 |
 | M1 | 会话树：host 推导 + 侧边栏树 UI | 侧边栏显示 fork 血缘树，点击切换会话 |
 | M2 | 消息小版本：域表 + 编辑/回退 + 开关 | 编辑后旧版可查可回退，开关生效 |
 | M3 | 虚拟分支：分支表 + 重新生成（`agent.followup`）+ 分支图视图 + 切换 | 重新生成产生新分支，分支图可切换查看 |
@@ -204,6 +257,7 @@ dsh-essential-tools/
 
 | 风险 | 对策 |
 |---|---|
+| **harness.handle 在永久包中不可用** | **已实证并修正**：改用 typert Remote（§0.1/§4），M0 起按此实现 |
 | 虚拟分支与产品聊天视图的渲染集成复杂 | 分支图作为独立 `conversation.view` 标签渲染，不改产品默认视图 |
 | 重新生成驱动 agent 循环 | **已实证**：`ctx.agents.get(id)` + `agent.followup()` 公开 API，不深入 agent 内部 |
 | replace 语义（compaction 交互） | 小版本存内容快照，回退走 replace 追加，与 compaction 机制一致 |
