@@ -85,7 +85,7 @@ v2 路径全部走 `cordis.patch.yml` 的 `config`（见上），不再硬编码
 
 - **Host 半区**（`lib/index.js`）：`TypertRemoteService` 子类 + `ctx.typert.register` 注册 typert Remote 端点（src-json codec，免生成器）。依赖服务经 `ctx.get` 读取（`fs`/`subprocess`/`sessionQuery`/`sessions`/`sessionTitle`/`sessionPersistence`），缺失安全降级。
 - **Client 半区**（`lib/client.js`）：`window.__ModuleLoader__.load` bundle（`dsh-client-modules` 契约），`React.createElement` 渲染，插槽 `shell.overlay`；RPC 走 `ctx.connection.rpc.call('/api', 'dshEssentialTools/<method>', {args})`。
-- **端点**：`dshEssentialTools/{lvalInfo,lvalListFiles,lvalReadFile,lvalBuild,lvalRun,lvalBuildRun,verProgCreate,verProgList,verProgRestore,verProgDelete,sessionsList,sessionRename,sessionDelete,treeList,verToggleGet,verToggleSet}`。
+- **端点**（28 个）：`dshEssentialTools/{lvalInfo,lvalListFiles,lvalReadFile,lvalBuild,lvalRun,lvalBuildRun,verProgCreate,verProgList,verProgRestore,verProgDelete,sessionsList,sessionRename,sessionDelete,treeList,verToggleGet,verToggleSet,branchList,branchCreate,branchSwitch,branchDelete,msgEdit,msgRollback,msgRegenerate,verMinorList,verMinorMessages,verMinorCompare,verMinorRestore,branchView}`。
 - 详细设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 发布
