@@ -115,7 +115,28 @@ dsh-essential-tools/
 
 ---
 
-## 3. 数据模型
+## 3. VTD 分层与数据模型（虚拟覆盖层）
+
+**VTD（虚拟对话存储系统）** 是插件的核心引擎，位于 DSH 前端与 DSH 后端之间，作为
+插件 Host 半区内的**显式模块**（进程内，不单独起服务；经 typert Remote 对外暴露，
+对内经 `storageDomain`/`sessionQuery`/`agents` 等 DSH 服务取数）。三条纪律：
+
+1. **VTD 不存对话本体**——只存虚拟层元数据（分支、消息版本、开关）；消息永远从
+   DSH 会话日志读取（唯一事实源），VTD 只做**投影**。
+2. **VTD 是插件内一个显式模块**（计划落为 `lib/vtd/` 目录，独立 API 面），不重复造
+   DSH 已有的轮子（存储域、会话查询、fork、typert Remote）。
+3. **前端"适配"= 插槽适配**：不改产品 bundle，UI 全部注册进产品插槽；客户端只经
+   `connection.rpc.call('/api', 'dshEssentialTools/<method>')` 与 VTD 通信。
+
+```
+DSH 前端（产品插槽 UI：工具栏/会话树/分支图/版本面板）
+        │  connection.rpc.call('/api', 'dshEssentialTools/*')
+        ▼
+VTD（lib/vtd/，插件 Host 半区内的虚拟覆盖层）
+        │  storageDomain / sessionQuery / agents / sessions / fs / subprocess
+        ▼
+DSH 后端（会话日志=唯一事实源；~/.dsh/storages 落旁路元数据）
+```
 
 ### 3.1 会话树（无新存储）
 
@@ -123,7 +144,7 @@ dsh-essential-tools/
 - 树节点 = 会话；边 = fork 关系；可在节点上显示分支标签与大版本标记。
 - 只读派生，不落盘。
 
-### 3.2 消息小版本（新 storage-domain 域 `dshVersions`）
+### 3.2 VTD 元数据（新 storage-domain 域 `dshVersions`，旁路存储）
 
 | 表 | 记录 | 说明 |
 |---|---|---|
@@ -151,10 +172,10 @@ dsh-essential-tools/
 
 ---
 
-## 4. RPC API（typert Remote，Host↔Client）
+## 4. VTD 对外 API（typert Remote，Host↔Client）
 
-统一返回 `{ok, error?, ...}`；Host 半区为 `dshEssentialTools` 服务（`TypertRemoteService` 子类），
-client 经 `ctx.connection.rpc.call('/api', 'dshEssentialTools/<method>', {args})` 调用：
+VTD 对外即 `dshEssentialTools` 服务（`TypertRemoteService` 子类，VTD 的宿主门面）。
+统一返回 `{ok, error?, ...}`；client 经 `ctx.connection.rpc.call('/api', 'dshEssentialTools/<method>', {args})` 调用：
 
 | 域 | 端点（namespace/method） | 说明 |
 |---|---|---|
@@ -245,8 +266,8 @@ function apply(ctx, config) {
 | 阶段 | 内容 | 验收 |
 |---|---|---|
 | M0 | 包结构重构：host/client 拆入 lib/、package.json `dsh.client`+exports、路径配置化、typert RPC 骨架 | 本地装入 web profile，重启常驻，工具栏可用 |
-| M1 | 会话树：host 推导 + 侧边栏树 UI | 侧边栏显示 fork 血缘树，点击切换会话 |
-| M2 | 消息小版本：域表 + 编辑/回退 + 开关 | 编辑后旧版可查可回退，开关生效 |
+| M1 | 会话树：host 推导 + 侧边栏树 UI（VTD 只读投影） | 侧边栏显示 fork 血缘树，点击切换会话 |
+| M2 | VTD 元数据域 `dshVersions`：`messageVersions`/`branches`/`settings` 表 + 编辑/回退 + 开关 | 编辑后旧版可查可回退，开关生效 |
 | M3 | 虚拟分支：分支表 + 重新生成（`agent.followup`）+ 分支图视图 + 切换 | 重新生成产生新分支，分支图可切换查看 |
 | M4 | 版本面板整合：程序+消息+开关+diff | 面板完整可用 |
 | M5 | 发布：npm + GitHub + README/关键词 | `dsh plugin add` 可装，仓库公开 |
