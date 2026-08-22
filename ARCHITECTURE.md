@@ -184,11 +184,12 @@ VTD 对外即 `dshEssentialTools` 服务（`TypertRemoteService` 子类，VTD �
 | | `dshEssentialTools/branchSwitch` | `{sessionId, branchId}` |
 | | `dshEssentialTools/branchList` / `branchRename` / `branchDelete` | 分支管理 |
 | msg | `dshEssentialTools/msgEdit` | `{sessionId, messageId, newText}` → 追加消息 + surface replace + 记小版本 |
-| | `dshEssentialTools/msgRegenerate` | `{sessionId, messageId}` → 建虚拟分支 + `agent.followup` 重答 |
+| | `dshEssentialTools/msgRegenerate` | `{sessionId, messageId}` → 建虚拟分支（锚定上方问题）+ `agent.followup` 注入 branch-reask 重答 |
 | | `dshEssentialTools/msgRollback` | `{sessionId, messageId}` → 按开关回退（开=最近小版本，关=原始版） |
-| ver | `dshEssentialTools/verMinorList` / `verMinorCompare` / `verMinorRestore` | 消息版本历史/diff/恢复 |
+| ver | `dshEssentialTools/verMinorList` / `verMinorCompare` / `verMinorRestore` / `verMinorMessages` | 消息版本历史/diff/恢复/汇总（版本面板） |
 | | `dshEssentialTools/verProgList` / `verProgCreate` / `verProgRestore` / `verProgDelete` | 程序版本（沿用 lval-ver-* 逻辑） |
 | | `dshEssentialTools/verToggleGet` / `verToggleSet` | 开关读写（settings 表 + 面板 UI） |
+| view | `dshEssentialTools/branchView` | `{sessionId}` → 分支列表 + 每分支消息流（前缀 + ranges，跳过 branch-reask 副本） |
 | lval | `lvalInfo` / `lvalListFiles` / `lvalReadFile` / `lvalBuild` / `lvalRun` / `lvalBuildRun` | 原 LVAL 工具，保留不动 |
 
 **Host 注册骨架（纯 JS，已实证）**：
