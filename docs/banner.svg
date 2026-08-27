@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 300" width="1280" height="300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1B33"/>
+      <stop offset="0.55" stop-color="#10254a"/>
+      <stop offset="1" stop-color="#16345c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.86" cy="0.12" r="0.75">
+      <stop offset="0" stop-color="#4a7bc8" stop-opacity="0.35"/>
+      <stop offset="0.55" stop-color="#3b5f9e" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#0b1b33" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5aa2ff"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="node" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7db4ff"/>
+      <stop offset="1" stop-color="#4d7fd9"/>
+    </linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="300" fill="url(#bg)"/>
+  <rect width="1280" height="300" fill="url(#grid)"/>
+  <rect width="1280" height="300" fill="url(#glow)"/>
+
+  <!-- conversation tree glyph -->
+  <g stroke="#ffffff" stroke-opacity="0.4" stroke-width="2.4" fill="none" stroke-linecap="round">
+    <path d="M118 232 L74 150"/>
+    <path d="M118 232 L162 150"/>
+    <path d="M74 150 L52 118"/>
+    <path d="M74 150 L96 118"/>
+    <path d="M162 150 L140 118"/>
+    <path d="M162 150 L184 118"/>
+  </g>
+  <g fill="url(#node)">
+    <circle cx="118" cy="232" r="13"/>
+    <circle cx="74" cy="150" r="11"/>
+    <circle cx="162" cy="150" r="11"/>
+  </g>
+  <g fill="#2b4a78">
+    <circle cx="52" cy="118" r="7"/>
+    <circle cx="96" cy="118" r="7"/>
+    <circle cx="140" cy="118" r="7"/>
+    <circle cx="184" cy="118" r="7"/>
+  </g>
+
+  <!-- title -->
+  <text x="232" y="150" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="46" font-weight="700" letter-spacing="0.5" fill="#EAF2FF">DSHEssentialTools</text>
+  <rect x="234" y="170" width="430" height="4" rx="2" fill="url(#accent)"/>
+
+  <!-- tagline -->
+  <text x="234" y="216" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="21" fill="#9FB4D8">Permanent DeepSeek Harness Plugin</text>
+  <text x="234" y="247" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="15" fill="#7F95BD" letter-spacing="1.2">VTD CONVERSATION TREE · VERSION MANAGEMENT · DET MANAGER</text>
+</svg>

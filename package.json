@@ -19,6 +19,7 @@
   },
   "files": [
     "lib",
+    "docs",
     "README.md",
     "LICENSE"
   ],
