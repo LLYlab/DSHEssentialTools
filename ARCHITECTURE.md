@@ -302,3 +302,20 @@ function apply(ctx, config) {
 - **DET 管理器**：`settings.section` 一页（id `dsh-det-manager`，order 90），四个开关即时装载/卸载 UI：工具栏按钮渲染门控；VTD 对话标签（`conversation.view` id `vtd-tree`）与消息操作（`conversation.chat.user-actions` id `dsh-user-actions`）按 `det.features.vtd` 动态 register/disposer（槽列表订阅实时响应；被卸标签是当前视图时 owner 回退默认 chat）。
 - 客户端端点缺失（未重启主机）时优雅降级：功能保持全开，开关/自检给出可读错误。
 - 端点：`registryList` / `registrySelfCheck` / `detFeatureGet` / `detFeatureSet`（src-json codec，返回值统一 `{ok,...}`）。
+
+## 全局插件控制（`lib/global.js` + host/client 新增）
+
+- **存储域** `dsh_global_plugins`（v1）：表 `plugins`（key=id `gp-*`；字段 id/name/description/level/host/client/originKind/originRef/summary/summaryAt/`sessions` 各会话映射 `{pluginId,packageId,enabledAt,by,state}`/createdAt/updatedAt）+ `store_cache`（`repo@branch` → AI 摘要，本地存档复用不重复耗 token）。
+- **档位**（`GlobalPluginStore.policy(level, by)`，by: user/ai/auto → verb: run/request-auto/request/refuse）：`always` run；`ai-auto` user→run、ai→request-auto（宿主 run() + 客户端自动批准）；`ai-approve` user→run、ai→request（标准 Cordis 审批）；`frozen` 一律 refuse（auto 仅豁免"已有记录恢复"）；`disabled` 一律 refuse 且设置档位时立即停止全部实例并清空映射。状态约定：定义即 `state=pending`；`runHostHalf`/`run()` 成功(非 awaiting)置 `enabled`；宿主 `cordis/dynamic-package` 事件与 `gpList` 的 pending 核对兜底纠正。
+- **启用执行**：host `_defineForSession`（`ctx.dynamicCordisRunner.define`，idPrefix 取 3-6 小写字母）→ 用户/自动路径 `runHostHalf(..., requestId=null)`（直跑免审批，授权客户端包）→ 客户端以 `dynamicCordisRunner.startUserRun` 补齐 client 半区加载（host 直跑不会触发客户端自动装载）；AI 路径 `runner.run()` → awaiting-approval → 现有 Cordis 面板审批（ai-auto 由 DET 客户端对"当前会话页"自动 `approve(requestId, true)`，插件级授权后续版本）。
+- **AI 工具**：`det_global_plugin_list/enable/disable`（`ctx.tools.register(defineTool(...))` + `ctx.systemPrompt.section` order 116）；档位在宿主强制执行，工具结果向模型说明 awaiting/拒绝原因。
+- **设置页**：`settings.section` id `dsh-global-plugins`（order 89，label「全局插件管理」）：插件列表（五档选择/编辑/启用停用/删除）+「从对话拉取」（`gpCordisInventory` 跨会话动态 Cordis 插件，`gpPull` 经 `inspectPackage` 拷贝源码）+「应用商店 / URL 下载」（GitHub 搜索 `gpStoreSearch`、AI 摘要 `gpStoreSummarize` 走 `ctx.llm.stream`（首个 provider/model），安装 `gpInstall` 按 `dsh-plugin.json` 或 `plugin/host.js`+`plugin/client.js` 约定拉取）。
+- **生命周期**：client `apply` 后订阅会话列表，切换会话时 `gpSync` 自动启用 `always` 并恢复各档位"已启用"会话（pending 不恢复）；连接重置强制重试。
+
+## DeepSeek 余额 · 模型单价（`lib/ds.js` + host/client 新增）
+
+- **数据层（`lib/ds.js`，纯函数可单测）**：`fetchDsBalance(key)` = 官方 `GET api.deepseek.com/user/balance`（Bearer；401/403→`KEY_INVALID`、429→`RATE_LIMITED`、网络→`NETWORK`；解析 `balance_infos`）；`parsePricingHtml(html)` = 官网定价页 SSR 表格解析（**语言/币种自适应**：表格含"元"→CNY（`数字元`，中文页优先），否则 USD（`$数字`，英文页兜底）；模型列 = 连续 `deepseek-*` 单元格；6 行价格 = 输入缓存命中/未命中 × 错峰/峰值 + 输出 × 错峰/峰值，每 1M tokens；峰值说明按币种语言提取——CNY 为北京时间周一至五 9:00-12:00/14:00-18:00，与 UTC 01:00-04:00/06:00-10:00 同一时刻）；`fetchDsPrice` 先中文页后英文页、带 lastGood 回退。
+- **宿主端点**：`dsBalance{force?}`（内存缓存 60s；`_dsApiKey()` 按 `配置 dsApiKey → 凭据缝(llm-deepseek 记录 → DEEPSEEK_API_KEY 引用) → 环境变量` 解析，key 仅存在于请求头，不落盘/日志/回传；错误携带 config hint）、`dsPrice{force?}`（内存缓存 6h，解析失败回退上次成功值并提示）。
+- **耗尽时间估算（`_dsUsageEstimate`，10 分钟缓存；价格未加载时懒加载一次）**：会话清单（durable ∪ live，按更新时间倒序取前 20）→ 每会话读日志（live 或 `sessionPersistence.load`）取 `assistant/message` 的 `data.usage`（与 token-meter 同源采样、无重复计数；input+cacheWrite 按缓存未命中价、cacheRead 按命中价、output 按输出价）→ 近 7 天窗口优先、近 30 天兜底 → 定价用「当前默认模型（`agentDefaultModel` 且 `deepseek-official`，否则最低价档）× 错峰单价」→ `daily` 日均费用 → 与价格同币种的余额桶匹配给出 `daysLeft`（币种不匹配 → `mismatch` 提示，不做汇率换算）。估算假设随响应返回并在 UI 注明。
+- **客户端**：模块级 `dsState`/`useDs` store（apply 内 `dsFetch` 装载端点调用，60s 余额轮询 + `connection/reset` 刷新）；`shell.overlay`（order 300）右下角余额悬浮卡（点击展开明细/刷新 + **预计耗尽天数**区块，零余额跳过、多币种 `¥/$` 分列）；`conversation.input.right`（order 150，模型选择右侧座位）单价芯片：读 `ctx.modelDirectories.directoryFor(sid).store` 当前 `{provider, model}`，仅 `deepseek-official` 且命中价格表时显示（**币种随价格表：CNY `¥` / USD `$`**），按峰值/错峰择一，悬停展示完整价格表 + note + 更新时间。
+- **参考与剔除**：参考 micc99/deepseek-balance-monitor、tunggian/DeepSeekBalanceMonitor 的余额接口/解析/错误处理做法；去除项目中的 MITM 本地代理、key 哈希台账、明文密钥存储与任何遥测/上报（见 README）。
