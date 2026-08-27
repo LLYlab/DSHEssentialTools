@@ -285,3 +285,20 @@ function apply(ctx, config) {
 | replace 语义（compaction 交互） | 小版本存内容快照，回退走 replace 追加，与 compaction 机制一致 |
 | client 半区 404（exports 缺失） | M0 起就按 `dsh-client-modules` 契约提供 `./client` export，先本地验证再发布 |
 | 产品升级覆盖 | 插件是独立 npm 包 + profile patch 行，升级产品不影响 |
+
+---
+
+## 10. v2 扩展：侧边栏登记簿 + DET 管理器
+
+在**不弹域版本、无迁移**的前提下，`dsh_versions`（version 2）新增两张表：
+
+| 表 | 记录 | 说明 |
+|---|---|---|
+| `sessions` | `{id, title, cwd, parentSession, origin, hidden, createdAt, updatedAt, lastSeq, activeBranchId}` | **会话侧边栏登记簿**：只存"存在的对话"元数据，不存对话本体（消息永远在会话日志=事实源）。key=sessionId |
+| `settings` | `{key, value}` | `det.features`（DET 管理器四开关 file/run/ver/vtd，默认全开）；`det.registry.check`（最近一次自检报告） |
+
+- **自动**：`session/created` 即时登记；`treeView`/`registryList` 触发 60s 节流 reconcile；`treefork` 建叉即登记隐藏子会话。
+- **自检**：`registrySelfCheck(force)` 对照 `sessionPersistence.list()` ∪ live 全集，逐项 增/修/删（清失联、补缺失、修漂移），写回 `det.registry.check` 报告。
+- **DET 管理器**：`settings.section` 一页（id `dsh-det-manager`，order 90），四个开关即时装载/卸载 UI：工具栏按钮渲染门控；VTD 对话标签（`conversation.view` id `vtd-tree`）与消息操作（`conversation.chat.user-actions` id `dsh-user-actions`）按 `det.features.vtd` 动态 register/disposer（槽列表订阅实时响应；被卸标签是当前视图时 owner 回退默认 chat）。
+- 客户端端点缺失（未重启主机）时优雅降级：功能保持全开，开关/自检给出可读错误。
+- 端点：`registryList` / `registrySelfCheck` / `detFeatureGet` / `detFeatureSet`（src-json codec，返回值统一 `{ok,...}`）。
