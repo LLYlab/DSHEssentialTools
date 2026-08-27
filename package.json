@@ -1,7 +1,7 @@
 {
   "name": "dsh-essential-tools",
-  "version": "2.1.0",
-  "description": "DSH 永久插件：LVAL 工程工具（编译/运行/代码查看/程序版本快照回退）+ 对话树（会话内分支/编辑/重新生成）+ 消息小版本 + DET 管理器 + 全局插件控制(全局插件管理)。Permanent DeepSeek Harness plugin: project run & code viewer, program snapshots, VTD conversation tree (in-session edit/retry/branches), message micro-versions, a feature manager and global plugin control.",
+  "version": "2.2.0",
+  "description": "DSH 永久插件：与原生 DSH 风格高度一体、界面简洁的 LVAL 工程工具（编译/运行/代码查看/程序版本快照回退）+ 对话树（会话内分支/编辑/重新生成）+ 消息小版本 + DET 管理器 + 全局插件控制(全局插件管理)。Permanent DeepSeek Harness plugin: a native-DSH-style, clean-UI project run & code viewer, program snapshots, VTD conversation tree (in-session edit/retry/branches), message micro-versions, a feature manager and global plugin control.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -16,9 +16,19 @@
 
 ---
 
-**DSH（DeepSeek Harness）永久插件** —— 面向 C/C++ 桌面工程（Visual Studio / MSBuild）的一站式开发助手工具栏 + **VTD 虚拟对话树与版本管理**。随 DSH 常驻、重启不丢，自动出现在 Settings → Plugin inventory。
+**DSH（DeepSeek Harness）永久插件** —— 面向 C/C++ 桌面工程（Visual Studio / MSBuild）的一站式开发助手工具栏 + **VTD 虚拟对话树与版本管理**。**与原生 DSH 风格高度一体、界面简洁**；随 DSH 常驻、重启不丢，自动出现在 Settings → Plugin inventory。
 
 > v2 起为**永久插件**（npm 包）；v1（动态插件，`plugin/` 目录）保留作开发/快速装载用途。
+
+## 🎉 v2.2.0 更新亮点
+
+- **更贴合原生 DSH 风格**：全局插件管理面板、VTD 对话页签、右侧工具栏均对齐 DSH 原生的观感与交互——同样的层级、同样的色彩变量、同样的滑动/折叠/卡片语言，几乎看不出是外挂。
+- **更简洁的界面**：面板去重、操作收拢到一处；常驻插件用「启用/禁用」二分开关替代繁琐五档；扫描 / 纳入 / 刷新均在当前标签内一键完成，避免到处跳转。
+- **全局插件管理强化**：
+  - 修复了全局插件库读取崩溃（存储域 `dsh_global_plugins` 读表改为 `entries()`）与并发首开竞态；
+  - **扫描已安装插件**：列出随 DSH 常驻的永久宿主插件（自动排除 DET 本身），可一键纳入全局插件库；
+  - **常驻插件二分开关**：对 DBS 这类跨会话插件做「启用/禁用」，实时经 Loader 卸载/装载、跨重启持久化，切换后自动刷新前端；
+  - **两种 GitHub 安装方式**：① 直接下载（`det_global_plugin_github_direct`）；② AI 读取源码自行编写（`det_global_plugin_github_rebuild` → `det_global_plugin_github_save`），注入「病毒/漏洞检查上下文」，**不直接执行第三方代码**。
 
 ## ✨ Features
 
@@ -51,7 +61,12 @@
 - **来源二·应用商店 / URL 下载**：
   - GitHub 搜索 DSH 插件 → 结果窗口展示（名称/描述/星数）→ **AI 摘要**（宿主 LLM 生成特性总结，**本地存档缓存，不重复消耗 token**）→ 安装
   - 或直接粘贴 JSON 清单 URL 下载：`{ name, description, host?, client?, hostUrl?, clientUrl? }`；GitHub 仓库约定：根 `dsh-plugin.json` 或 `plugin/host.js` + `plugin/client.js`
+- **两种从 GitHub 下载/获取插件的方式**：
+  1. **直接下载**（`det_global_plugin_github_direct`）：传入仓库 URL / `owner/repo` / 插件文件 URL，按约定格式拉取代码并入库，返回可疑代码扫描警告；
+  2. **AI 读取源码自行编写**（`det_global_plugin_github_rebuild` → `det_global_plugin_github_save`）：拉取仓库 README 与 host/client 源码，注入「病毒/漏洞检查上下文」供 AI 审查，AI 对照源码自行实现等价（更安全）版本再入库——**不直接执行第三方代码**。
 - **对话内 AI 工具**：`det_global_plugin_list` / `det_global_plugin_enable` / `det_global_plugin_disable`（档位在宿主强制执行）
+- **扫描已安装插件**：列出当前 DSH 已常驻装载的「永久宿主插件」（如 DBS 背景音乐），自动排除 DET 全局插件库管理器本身；`det_global_plugin_scan_installed`（对话内）与设置页「全局插件管理 → 已安装插件」均可扫描查看装载状态；点击「纳入全局插件库」（`det_global_plugin_import_installed` / `gpImportInstalled`）即成为常驻型全局插件
+- **常驻插件二分开关（启用/禁用）**：对 DBS 这类跨会话常驻插件，用「启用/禁用」代替五档（`det_global_plugin_set_enabled` / `gpSetPermanentEnabled` / 设置页卡片开关）——禁用时经 `loader.update` 实时卸载宿主实例，启用时重新加载；`globallyEnabled` 持久化，重启后再次应用；切换后**自动刷新前端**让该插件 UI 随之消失/重现
 - ⚠ 安全口径：全局插件代码与动态 Cordis 插件一致，以当前进程真实权限运行；安装/下载前有明确提示
 
 ### 💰 DeepSeek 余额 · 模型单价
@@ -99,9 +114,9 @@
 **VTD 存储域**（`lib/vtd/index.js`）：`dsh_versions` 域（version 2，无迁移）：`minor_versions` / `sessions`（登记簿）/ `settings`（开关与自检报告）。
 **Client 半区**（`lib/client.js`）：`window.__ModuleLoader__.load` bundle，插槽 `shell.overlay` / `conversation.view` / `conversation.chat.user-actions` / `settings.section`。
 
-端点：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete` `treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor` `registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet` **`gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpInstall` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `dsBalance` `dsPrice`**
+端点：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete` `treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor` `registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet` **`gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `dsBalance` `dsPrice`**
 
-模型工具（对话内 AI）：**`det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable`**
+模型工具（对话内 AI）：**`det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable` `det_global_plugin_scan_installed` `det_global_plugin_import_installed` `det_global_plugin_set_enabled` `det_global_plugin_github_direct` `det_global_plugin_github_rebuild` `det_global_plugin_github_save`**
 
 </details>
 
