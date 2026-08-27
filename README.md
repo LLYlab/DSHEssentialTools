@@ -69,6 +69,14 @@
 - **常驻插件二分开关（启用/禁用）**：对 DBS 这类跨会话常驻插件，用「启用/禁用」代替五档（`det_global_plugin_set_enabled` / `gpSetPermanentEnabled` / 设置页卡片开关）——禁用时经 `loader.update` 实时卸载宿主实例，启用时重新加载；`globallyEnabled` 持久化，重启后再次应用；切换后**自动刷新前端**让该插件 UI 随之消失/重现
 - ⚠ 安全口径：全局插件代码与动态 Cordis 插件一致，以当前进程真实权限运行；安装/下载前有明确提示
 
+### 🧭 MDA 分层（Mixing Dialogue Agent）· CDM · TCT
+- **「MDA 分组」设置区（仿「外观」三选一 + 图标）**：
+  - 原生分组（默认，行为与现在一致）；工作区组（按 工作区→分支模型区域→会话 分组，区域内共享 CDM 记忆 + 插件清单）；模型组（同工作区组，并允许模型合作）。
+  - 主视图左侧栏底部「🔀 MDA 分组」入口：分组树**可折叠**，工作区「+」建分组+新对话，区域「+」组内新对话。
+- **CDM（CrossDialogueMemory）**：跨对话读取/搜索对话段——`cdm_list` / `cdm_search`（默认限定当前工作区，`cross` 提权可跨工作区）/ `cdm_read`。
+- **TCT（Temp Chat Tool）**：一次性临时对话——`det_tct`（简短 prompt + 可选 preset + 权限控制 → 单段 feedback → 会话即焚、无持久化）；DET 设置内可选 TCT 模型。
+- **模型合作 / 介绍（仅模型组）**：`mda_card`（用 TCT 生成模型介绍：用途/配置/工具/最近在做什么）、`mda_activate`（激活其它模型，⚠ 耗提示词、不鼓励）、`mda_list_areas`。
+
 ### 💰 DeepSeek 余额 · 模型单价
 - **右下角余额悬浮卡**：官方接口 `GET https://api.deepseek.com/user/balance`（Bearer key → `balance_infos`：币种/总计/赠送/充值），60s 自动刷新 + 手动刷新；点击展开明细（多币种 `¥/ $` 分列、账户可用性、错误提示如 Key 无效/欠费）。
 - **耗尽时间估算**：从会话日志读取 provider 用量（`assistant/message` 的 `data.usage`，与 token-meter 同源采样），**近 7 天优先、近 30 天兜底**，按「当前默认模型(deepseek-official) × 错峰单价」折算日均费用，给出**预计耗尽天数**（与价格同币种的余额桶匹配才估算；估算假设在 UI 中注明）。
@@ -114,9 +122,9 @@
 **VTD 存储域**（`lib/vtd/index.js`）：`dsh_versions` 域（version 2，无迁移）：`minor_versions` / `sessions`（登记簿）/ `settings`（开关与自检报告）。
 **Client 半区**（`lib/client.js`）：`window.__ModuleLoader__.load` bundle，插槽 `shell.overlay` / `conversation.view` / `conversation.chat.user-actions` / `settings.section`。
 
-端点：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete` `treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor` `registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet` **`gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `dsBalance` `dsPrice`**
+端点：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete` `treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor` `registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet` **`gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `gpUpdateCode` `gpSecurityReview` `tctRun` `tctModels` `tctSetModel` `cdmList` `cdmSearch` `cdmRead` `mdaGet` `mdaSetMode` `mdaAreaList` `mdaAreaCreate` `mdaAreaRemove` `mdaAreaAddSession` `mdaAreaRemoveSession` `mdaNewConversation` `mdaCard` `mdaActivate` `dsBalance` `dsPrice`**
 
-模型工具（对话内 AI）：**`det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable` `det_global_plugin_scan_installed` `det_global_plugin_import_installed` `det_global_plugin_set_enabled` `det_global_plugin_github_direct` `det_global_plugin_github_rebuild` `det_global_plugin_github_save`**
+模型工具（对话内 AI）：**`det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable` `det_global_plugin_scan_installed` `det_global_plugin_import_installed` `det_global_plugin_set_enabled` `det_global_plugin_github_direct` `det_global_plugin_github_rebuild` `det_global_plugin_github_save` `det_tct` `cdm_list` `cdm_search` `cdm_read` `mda_list_areas` `mda_card` `mda_activate`**
 
 </details>
 
