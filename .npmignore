@@ -1,0 +1,9 @@
+# 备份 / 本地临时文件
+*.bak*
+*.tmp
+*.log
+
+# 本发布脚本与安装器不随 npm 包发布（放仓库，供 GitHub Release 资产使用）
+install.ps1
+publish.ps1
+*.ps1
