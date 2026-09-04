@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.4.0 — 浏览器控制(DET → 你已登录的浏览器,扩展方案)
+
+- **DSH 控制扩展**(`browser-extension/`):MV3 浏览器扩展(Chrome/Edge),通过本地 WebSocket 与 DSH 宿主通信;四档开关(关闭/只读/只写/启用)由用户在扩展弹窗控制;DSH 只读、可调用。
+- **本地 WebSocket 桥**(`lib/browser.js`):DSH 宿主启动仅绑 `127.0.0.1:9123` 的 WS server,路由扩展命令;握手校验 Origin,防跨源。
+- **det_browser 模型工具**:read_text / read_dom / screenshot / get_url / get_title / navigate / click / fill / run。只读/只写模式门禁在扩展端强制;「只写」不回传页面内容。
+- **网络权限第4档(使用用户浏览器)= 启用浏览器控制**:低于该档 DET 拦截;扩展未连接/未开启时报错。
+- **高危审批**:非 Full access 模式下,浏览器动作(读写)经 `tools/pre-execute` `{kind:'ask'}` 走产品审批;Full access 免审。
+- **客户端**:DET 管理器新增「浏览器控制」状态块(Web权限档位/桥运行/扩展连接/模式)。
+
 ## v2.3.4 — VTD 分叉流式 + 对话对齐产品样式
 
 - **分叉也要流式**:VTD 对话页签不再固定 4s 轮询。宿主 `treeView` 新增 `generating`(open-turn)信号;客户端据此在**生成中高频刷新(≈700ms)、空闲低频**(≈2.5s),并带生长检测兜底(宿主未更新时仍能流式)。生成中自动滚到底部、显示「正在生成…」提示。

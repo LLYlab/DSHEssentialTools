@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DSH 浏览器控制</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif; margin: 0; padding: 16px; font-size: 13px; }
+    h1 { font-size: 15px; margin: 0 0 4px; }
+    .sub { color: #8a8f98; font-size: 12px; margin: 0 0 14px; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(128,128,128,.2); }
+    .row:last-child { border-bottom: none; }
+    .opt-title { font-weight: 600; }
+    .opt-sub { color: #8a8f98; font-size: 11px; margin-top: 2px; }
+    .modes { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; border-radius: 999px; padding: 5px 11px; cursor: pointer; font-size: 12px; }
+    .chip.on { border-color: #2563eb; color: #2563eb; background: rgba(37,99,235,.1); font-weight: 600; }
+    .note { background: rgba(128,128,128,.12); border-radius: 8px; padding: 8px 10px; margin-top: 14px; font-size: 11.5px; line-height: 1.5; color: #6b7280; }
+    .status { margin-top: 10px; font-size: 12px; color: #22a06b; }
+    .status.err { color: #d33; }
+  </style>
+</head>
+<body>
+  <h1>DSH 浏览器控制</h1>
+  <p class="sub">本扩展让 DeepSeek Harness (DET) 通过本机 WebSocket 控制你已登录的浏览器。模式由本页控制——DSH 只能读取、不能修改。</p>
+
+  <div class="row">
+    <div>
+      <div class="opt-title">控制模式</div>
+      <div class="opt-sub">DSH 可对页面执行的操作范围</div>
+    </div>
+  </div>
+  <div class="modes" id="modes">
+    <button class="chip" data-mode="off">关闭</button>
+    <button class="chip" data-mode="read">只读</button>
+    <button class="chip" data-mode="write">只写</button>
+    <button class="chip" data-mode="on">启用</button>
+  </div>
+
+  <div class="row" style="margin-top:8px">
+    <div>
+      <div class="opt-title">说明</div>
+      <div class="opt-sub">
+        <b>关闭</b>：拒绝一切浏览器操作。<br>
+        <b>只读</b>：仅读网页文本/DOM/URL/截图，不执行点击/导航/填表。<br>
+        <b>只写</b>：可导航/点击/填表/执行，但不回传页面内容。<br>
+        <b>启用</b>：读写完整能力（高危）。
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="note">
+    ⚠ 浏览器控制属于<b>高危能力</b>：启用后 DSH 可读取你登录页面的内容、并执行页面操作。默认在非「Full access」权限模式下，DET 对写类动作需额外审批。<br><br>
+    仅连接本机 <code>127.0.0.1:9123</code>；仅操作 DET 指定的标签页；不访问第三方站点。
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; width: 220px; margin: 0; padding: 12px; font-size: 12.5px; }
+    h1 { font-size: 13px; margin: 0 0 8px; }
+    .modes { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; border-radius: 999px; padding: 5px 9px; cursor: pointer; font-size: 12px; }
+    .chip.on { border-color: #2563eb; color: #2563eb; background: rgba(37,99,235,.1); font-weight: 600; }
+    .status { margin-top: 8px; font-size: 11.5px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>DSH 浏览器控制</h1>
+  <div class="modes" id="modes">
+    <button class="chip" data-mode="off">关闭</button>
+    <button class="chip" data-mode="read">只读</button>
+    <button class="chip" data-mode="write">只写</button>
+    <button class="chip" data-mode="on">启用</button>
+  </div>
+  <div class="status" id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
