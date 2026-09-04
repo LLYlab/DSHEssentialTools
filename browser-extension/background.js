@@ -151,18 +151,41 @@ function ensureTab(tabId) {
   });
 }
 
-function inject(tabId, code) {
+function injectScript(tabId, kind, payload) {
+  // 在页面 ISOLATED 世界执行;不依赖 eval/new Function(规避 MV3 世界 CSP 限制)。
   return chrome.scripting.executeScript({
     target: { tabId },
-    func: (body) => {
-      // 在页面上下文中执行;body 是字符串代码。
-      const fn = new Function("return (" + body + ")");
-      const val = fn();
-      return Promise.resolve(val);
+    func: (k, p) => {
+      let out = "";
+      try {
+        if (k === "read_text") { out = document.body ? document.body.innerText : ""; }
+        else if (k === "read_dom") { out = document.documentElement ? document.documentElement.outerHTML : ""; }
+        else if (k === "click") {
+          const el = p && p.sel ? document.querySelector(String(p.sel)) : null;
+          if (!el) out = "ERR:no-element";
+          else { el.click(); out = "clicked"; }
+        }
+        else if (k === "fill") {
+          const el = p && p.sel ? document.querySelector(String(p.sel)) : null;
+          if (!el) out = "ERR:no-element";
+          else {
+            el.value = String(p && p.val !== undefined ? p.val : "");
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            out = "filled";
+          }
+        }
+        else if (k === "run") {
+          // 任意外部脚本:try eval(受页面/扩展 CSP 限制,失败则报错)。
+          out = "" + eval(String(p && p.code || ""));
+        }
+      } catch (e) { out = "ERR:" + (e && e.message ? e.message : String(e)); }
+      return out;
     },
-    args: [code],
+    args: [kind, payload || {}],
   }).then((res) => {
-    return res && res[0] && res[0].result !== undefined ? res[0].result : undefined;
+    const r = res && res[0] ? res[0].result : undefined;
+    return typeof r === "string" ? r : String(r || "");
   });
 }
 
@@ -173,14 +196,9 @@ async function doRead(c, cmd, tabId) {
   if (c === "get_url") return { ok: true, result: { url } };
   if (c === "get_title") return { ok: true, result: { title } };
   if (c === "screenshot") return screenshot(tabId);
-  // read_text / read_dom 需要页面脚本
-  const script = c === "read_text"
-    ? "document.body ? document.body.innerText : ''"
-    : "document.documentElement ? document.documentElement.outerHTML : ''";
   let out = "";
   try {
-    const r = await inject(tabId, script);
-    out = typeof r === "string" ? r : String(r || "");
+    out = await injectScript(tabId, c === "read_dom" ? "read_dom" : "read_text", {});
   } catch (e) {
     return { ok: false, result: { error: String(e && e.message ? e.message : e) } };
   }
@@ -209,24 +227,15 @@ async function doWrite(c, cmd, tabId) {
   }
   if (c === "run") {
     // 任意外部脚本(高危,仅 on 模式并由 DET 审批后放行)。执行但不回读内容。
-    const code = String(cmd.code || "");
-    let res = null;
-    try { res = await inject(tabId, code); } catch (e) { return { ok: false, result: { error: String(e && e.message ? e.message : e) } }; }
+    try { await injectScript(tabId, "run", { code: String(cmd.code || "") }); }
+    catch (e) { return { ok: false, result: { error: String(e && e.message ? e.message : e) } }; }
     return { ok: true, result: { ok: true } };
   }
-  // click / fill: 通过页面脚本完成交互
-  const selector = String(cmd.selector || "");
-  const value = cmd.value !== undefined ? String(cmd.value) : "";
-  const script = c === "click"
-    ? "try { var el=document.querySelector(" + JSON.stringify(selector) + "); if(!el) throw new Error('no element'); el.click(); return 'clicked'; } catch(e){ return 'ERR:'+e.message; }"
-    : "try { var el=document.querySelector(" + JSON.stringify(selector) + "); if(!el) throw new Error('no element'); el.value=" + JSON.stringify(value) + "; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); return 'filled'; } catch(e){ return 'ERR:'+e.message; }";
+  const kind = c === "click" ? "click" : "fill";
+  const payload = c === "click" ? { sel: String(cmd.selector || "") } : { sel: String(cmd.selector || ""), val: cmd.value !== undefined ? String(cmd.value) : "" };
   let out = "";
-  try {
-    const r = await inject(tabId, script);
-    out = typeof r === "string" ? r : String(r || "");
-  } catch (e) {
-    return { ok: false, result: { error: String(e && e.message ? e.message : e) } };
-  }
+  try { out = await injectScript(tabId, kind, payload); }
+  catch (e) { return { ok: false, result: { error: String(e && e.message ? e.message : e) } }; }
   if (out.indexOf("ERR:") === 0) return { ok: false, result: { error: out.slice(4) } };
   return { ok: true, result: { ok: true } };
 }
