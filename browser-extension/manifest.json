@@ -8,12 +8,11 @@
     "storage",
     "tabs",
     "scripting",
-    "activeTab",
-    "webNavigation"
+    "activeTab"
   ],
   "host_permissions": [
-    "http://127.0.0.1:9123/*",
-    "ws://127.0.0.1:9123/*"
+    "<all_urls>",
+    "http://127.0.0.1:9123/*"
   ],
   "background": {
     "service_worker": "background.js",
