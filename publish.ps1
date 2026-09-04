@@ -1,4 +1,4 @@
-﻿# ====================================================================
+# ====================================================================
 #  dsh-essential-tools 一键发布脚本（GitHub + npm + Release 资产）
 #  ------------------------------------------------------------------
 #  用法（在「本机」PowerShell 中运行，需已用 gh 登录、npm 已认证）：
@@ -48,7 +48,7 @@ if (-not $DryRun) {
 # ---- 2. 清理备份文件 ----
 Run-Step "清理备份 / 传感器文件"
 RunCmd "Remove-Item -Force lib\*.bak-* -ErrorAction SilentlyContinue; Remove-Item -Force lib\*.bak.* -ErrorAction SilentlyContinue"
-RunCmd "git rm -q --cached lib/*.bak-* 2>$null; git rm -q --cached lib/*.bak.* 2>$null"
+RunCmd "git rm -q --cached lib/*.bak-* 2>&1 | Out-Null; git rm -q --cached lib/*.bak.* 2>&1 | Out-Null; exit 0"
 
 # ---- 3. 提交 + tag ----
 Run-Step "提交 + 打 tag"
