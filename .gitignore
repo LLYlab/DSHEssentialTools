@@ -20,3 +20,6 @@ Thumbs.db
 
 *.bak*
 
+# 本地面向维护者/AI 的内部指南(不发布)
+docs/AI_GUIDE.md
+

@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/DSH-0.1.1--rc.2-blue?style=flat-square" alt="DSH">
   <img src="https://img.shields.io/badge/type-permanent%20plugin-8c9eff?style=flat-square" alt="type">
-  <img src="https://img.shields.io/badge/version-2.3.4-8c9eff?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/version-2.4.0-8c9eff?style=flat-square" alt="version">
   <img src="https://img.shields.io/badge/language-JavaScript-F7DF1E?style=flat-square" alt="JS">
 </p>
 
@@ -30,7 +30,7 @@
 | 用 VS / MSBuild 做 **C/C++ 桌面工程**、又常驻 DSH 的开发者 | 一键编译运行、代码速览、程序版本快照回退、对话分支管理 |
 | 重度使用 DSH 会话、想更好管理对话与跨会话记忆的开发者 | VTD 对话树（编辑 / 重试 / 分支）、消息小版本、CDM 跨对话记忆、TCT 临时对话、MDA 分层 |
 
-**为什么选它**：与原生 DSH 风格高度一体、界面简洁；随 DSH 常驻、重启不丢，自动出现在 Settings → Plugin inventory；内置 VTD 虚拟对话树（编辑 / 重试 / 分支）、消息小版本，以及全球插件管理与跨对话记忆体系。
+**为什么选它**：与原生 DSH 风格高度一体、界面简洁；随 DSH 常驻、重启不丢，自动出现在 Settings → Plugin inventory；内置 VTD 虚拟对话树（编辑 / 重试 / 分支）、消息小版本，以及全局插件管理与跨对话记忆体系。
 
 > 🚀 **快速安装**：见下方「Quick start」—— 通用安装器可一条命令完成（含 Register 进 DSH profile）。
 
@@ -40,6 +40,11 @@
   <summary>🆕 更新亮点（点击展开）</summary>
 
 ## 🎉 更新亮点
+
+### v2.4.0 — 浏览器控制扩展 + 工具链自动发现 + 启动安全
+- **浏览器控制扩展（DET Browser Extension）**：新增长驻的浏览器扩展方案，供第 4 档「使用用户浏览器」权限驱动真实浏览器，安全注入（固定函数 + 参数，不用 `new Function`），适配 Edge / Chrome MV3。
+- **启动安全策略（Boot Guard）**：每次启动后自动应用持久化的常驻插件启用状态；若连续启动失败达到 `bootFailLimit`（默认 2）次，**自动禁用全部全局插件**并复位计数，避免反复故障拖垮启动。
+- **工具链自动发现（Auto MSBuild）**：配置的 `msbuild` 路径缺失或不可用时，自动通过 `vswhere` → 常见 VS 安装目录 → PATH 顺序探测本机可用的 `MSBuild.exe`，并缓存结果（TTL 60s）。`lvalInfo` 会返回实际生效的 MSBuild 路径。
 
 ### v2.3.4 — VTD 分叉流式 + 对话对齐产品样式
 - **分叉也流式**：VTD 对话页签不再固定 4s 轮询。宿主 `treeView` 新增 `generating`（open-turn）信号，客户端依此在**生成中高频刷新（≈700ms）、空闲低频（≈2.5s）**，并带生长检测兜底。生成中自动滚到底、显示「正在生成…」提示。
@@ -70,7 +75,7 @@
 | 🗎 | 文件 | 浏览当前会话工作区文件（文件夹折叠树），点击预览 / 编辑 |
 | 🕘 | 版本 | 程序大版本：手动快照 / 回退（回退前自动备份）/ 删除，**只动代码文件** |
 
-> 这三项为「工程」功能，需在 DSH profile 的插件配置里填 `lvalRoot` / `srcDir` / `solution` / `msbuild`（可选）；不填时其余功能（对话树 / DET 管理器 / 全局插件 / MDA / 余额）照常可用。
+> 这三项为「工程」功能，需在 DSH profile 的插件配置里填 `lvalRoot` / `srcDir` / `solution`（`msbuild` 可选——缺失或不可用时自动探测本机 VS/MSBuild）。
 
 ### 🌲 VTD 虚拟对话树
 - **编辑 / 重试**用户消息 → 创建真实分支子会话（`origin: vtd-fork`，侧边栏隐藏）让模型重答，原对话保留。
@@ -90,6 +95,7 @@
 - **两种从 GitHub 获取插件的方式**：① 直接下载（`det_global_plugin_github_direct`）；② **AI 读取源码自行编写**（`det_global_plugin_github_rebuild` → `det_global_plugin_github_save`），注入「病毒 / 漏洞检查上下文」，**不直接执行第三方代码**。
 - **对话内 AI 工具**：`det_global_plugin_list/enable/disable`、`det_global_plugin_scan_installed`、`det_global_plugin_import_installed`、`det_global_plugin_set_enabled`。
 - **扫描已安装插件 + 常驻插件二分开关**：对 DBS 这类跨会话常驻插件做「启用 / 禁用」，实时经 Loader 卸载 / 装载、跨重启持久化、切换后自动刷新前端。
+- **启动安全（Boot Guard）**：连续启动失败达到阈值自动禁用全部全局插件，防止反复故障。
 - ⚠ 安全口径：全局插件代码与动态 Cordis 插件一致，以当前进程真实权限运行；安装 / 下载前有明确提示。
 
 ### 🧭 MDA 分层（Mixing Dialogue Agent）· CDM · TCT
@@ -133,10 +139,11 @@ dsh plugin --profile web add dsh-essential-tools
       #   lvalRoot: 'C:\path\to\project'
       #   srcDir: 'C:\path\to\project\src'
       #   solution: 'C:\path\to\project\App.slnx'
-      #   msbuild: 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe'
+      #   msbuild: 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe'   # 可选：缺失或不可用时自动探测
       #   configuration: 'Debug'
       #   platform: 'x64'
       #   rollbackTargetDefault: 'minor'
+      #   bootFailLimit: 3          # 可选：连续启动失败次数阈值（默认 2）
 ```
 
 > v1 动态装载（仅开发用）：`cordis_define` 创建并粘贴 `plugin/host.js` / `plugin/client.js`，`cordis_run` 激活。
@@ -148,9 +155,10 @@ dsh plugin --profile web add dsh-essential-tools
 
 **Host 半区**（`lib/index.js`）：`TypertRemoteService` 子类 + `ctx.typert.register`（src-json codec）；依赖服务经 `ctx.get` 读取，缺失安全降级。
 **VTD 存储域**（`lib/vtd/index.js`）：`dsh_versions` 域（version 2，无迁移）：`minor_versions` / `sessions`（登记簿）/ `settings`（开关与自检报告）。
+**全局插件存储域**（`lib/global.js`）：`dsh_global_plugins` 域（version 1）：`plugins` / `store_cache` / `boot`（启动健康记录）。
 **Client 半区**（`lib/client.js`）：`window.__ModuleLoader__.load` bundle，插槽 `shell.overlay` / `conversation.view` / `conversation.chat.user-actions` / `settings.section`。
 
-端点：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete` `treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor` `registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet` `gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `gpUpdateCode` `gpSecurityReview` `tctRun` `tctModels` `tctSetModel` `cdmList` `cdmSearch` `cdmRead` `mdaGet` `mdaSetMode` `mdaAreaList` `mdaAreaCreate` `mdaAreaRemove` `mdaAreaAddSession` `mdaAreaRemoveSession` `mdaNewConversation` `mdaCard` `mdaActivate` `dsBalance` `dsPrice`
+端点：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete` `treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor` `registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet` `gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `gpUpdateCode` `gpSecurityReview` `tctRun` `tctModels` `tctSetModel` `cdmList` `cdmSearch` `cdmRead` `mdaGet` `mdaSetMode` `mdaAreaList` `mdaAreaCreate` `mdaAreaRemove` `mdaAreaAddSession` `mdaAreaRemoveSession` `mdaNewConversation` `mdaCard` `mdaActivate` `dsBalance` `dsPrice` `browserStart` `browserStop` `browserSend`（扩展桥）
 
 模型工具（对话内 AI）：**`det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable` `det_global_plugin_scan_installed` `det_global_plugin_import_installed` `det_global_plugin_set_enabled` `det_global_plugin_github_direct` `det_global_plugin_github_rebuild` `det_global_plugin_github_save` `det_tct` `cdm_list` `cdm_search` `cdm_read` `mda_list_areas` `mda_card` `mda_activate`**
 
@@ -160,6 +168,9 @@ dsh plugin --profile web add dsh-essential-tools
 
 ## 🔒 安全
 安全设计、五维审查结论（插件越权 / 恶意代码 / 易错点 / 外部攻击面 / 开源泄露）与已落实修复清单见 [`docs/SECURITY.md`](docs/SECURITY.md)。要点：插件代码 = 当前进程真实权限（非安全边界，请只启用信任的代码）；下载 / 安装全链路 SSRF 防护 + 可疑代码扫描 + commit 溯源；API key 仅宿主解析、绝不落盘 / 回传。
+
+## 📝 面向维护者的内部文档
+实现细节、文件结构与「如何低成本地安全改这段代码」的指南见 [`docs/AI_GUIDE.md`](docs/AI_GUIDE.md)（**仅本地**，已被 `.gitignore` 排除，不随包 / 仓库发布）。
 
 ## License
 [MIT](LICENSE) © 2026 L2959159224
