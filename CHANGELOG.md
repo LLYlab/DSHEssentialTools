@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.4.1 — 浏览器桥稳定性 + 安全加固 + README / 用户指导手册
+
+- **浏览器桥只保留最新连接**：扩展重载 / MV3 Service Worker 重启后旧 socket 可能残留（`close` 未触发），此时命令会发到死连接上，表现为**间歇性 `browser-timeout`**（实测见过 6 条残留）。新连接建立时清掉更早的连接，`_firstSocket` 改为取**最后加入**的一条。
+- **扩展档位切换经 background RPC**：弹窗 / 选项页不再直接写 `chrome.storage`，而是 `chrome.runtime.sendMessage({type:'setMode'})` → 同时**持久化 + 更新徽标 + 通知宿主**。修掉「改成『启用』后 `det_browser` 仍报 `ext-mode-off`」（宿主收不到通知，继续按旧档位拒绝）。
+- **安全**：`_fetch` 在 DNS 解析后再判一次私网（**防 DNS rebinding**）；`_fetch` / 余额 / 单价统一 15s 超时（此前一个不响应的主机能把端点挂死）；读到响应体前先看 `Content-Length`，避免超大响应整体进内存。
+- **加固**：`cmd.exe` 调用的 `mkdir` / `rmdir` 路径整体**加引号**——未加引号时空格会被拆成多参数，`& | ^` 等元字符会被解释执行（命令注入）。id 已白名单化，仍补引号保护。
+- **扫描器误报**：`exec(` / `child_process` 规则加词边界（`\b`），`browserExec(` 不再被误报为进程执行。
+- **修复**：inventory 行的 `packages` 可能缺失（不同 DSH 版本），复用动态插件时加容错，避免 TypeError；GitHub 商店搜索结果的 `name` / `verificationStatus` 归一化，否则模型工具的 output schema 会拿到 `undefined` 被判为非法 JSON。
+- **余额刷新更跟手**：TTL 8s → 4s，配合前端 5s 轮询。
+- **文档**：重写 `README.md`（价值主张 / 亮点 / 快速开始 / 文档索引），新增面向使用者的 **[docs/GUIDE.md](docs/GUIDE.md) 用户指导手册**（安装、上手、逐功能详解、权限模型、扩展装载、FAQ、故障排查、卸载回滚、速查表）。
+
 ## v2.4.0 — 浏览器控制(DET → 你已登录的浏览器,扩展方案)
 
 - **DSH 控制扩展**(`browser-extension/`):MV3 浏览器扩展(Chrome/Edge),通过本地 WebSocket 与 DSH 宿主通信;四档开关(关闭/只读/只写/启用)由用户在扩展弹窗控制;DSH 只读、可调用。

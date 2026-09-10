@@ -25,6 +25,9 @@
 
 ### 4) 外部攻击面
 - **SSRF 防护**（新增）：所有宿主网络抓取（下载 URL、清单 `hostUrl/clientUrl`、GitHub 内容 API）经 `safeHttpUrl`：仅 http/https、拒绝 URL 内嵌凭据、**拒绝私网/环回/链路本地/云元数据**（含 IPv4 保留段、IPv6 `::1`/ULA/link-local、`::ffff:` 映射的点分与十六进制形式、`localhost`/`.local`/`.internal`/`.localhost`）；重定向**手动跟随、每一跳复验**、最多 5 跳。
+- **DNS rebinding 防护（v2.4.1）**：主机名黑名单挡不住「公网域名解析到内网」，因此 `_fetch` 在解析后**再看真实地址**（`dns.lookup(host,{all:true})` → 逐个判私网/保留段），命中即拒绝。
+- **超时与响应体上限（v2.4.1）**：`_fetch` / 余额 / 单价统一 15s 超时（此前一个不响应的主机能把端点挂死）；读取响应体**之前**先校验 `Content-Length`，避免超大响应整体读进内存。
+- **命令注入加固（v2.4.1）**：所有 `cmd.exe` 调用（`mkdir` / `rmdir`）路径整体加引号——未加引号时空格会被 `cmd /c` 拆成多个参数，且 `& | ^` 等元字符会被解释执行；版本 id 另有白名单校验。
 - 余额/定价只访问官方主机（`api.deepseek.com` / `api-docs.deepseek.com`），并校验**最终响应主机仍为官方**（防重定向劫持）。
 - **凭据**：API key 仅由宿主解析（配置 → DSH 凭据缝 → 环境变量），只存在于请求头；不落盘、不进日志、不返回浏览器/客户端；错误提示只含引用名（如 `DEEPSEEK_API_KEY`）。
 - **XSS**：客户端全部经 React 渲染（无 `innerHTML`/`dangerouslySetInnerHTML`/jQuery），插件名/描述/摘要/README/官网 note 均为文本节点。
@@ -46,3 +49,5 @@
 5. 余额/定价：校验**最终官方主机**（防重定向劫持）。
 6. 配置默认值**去个人化**（中性占位）；未配置时端点明确报错，不再落到进程 CWD。
 7. 客户端 `DsModelPrice` 等仅 React 文本渲染复核（无 unsafe HTML）。
+8. （v2.4.1）`_fetch` **解析后二次判私网**（DNS rebinding）；`_fetch`/余额/单价 **15s 超时** + 读体前 `Content-Length` 预检（DoS/挂死）。
+9. （v2.4.1）`cmd.exe mkdir/rmdir` 路径加引号（参数拆分与元字符注入）；`scanCodeWarnings` 的 `exec(`/`child_process` 规则加词边界（消除 `browserExec(` 误报）。

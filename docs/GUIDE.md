@@ -1,0 +1,447 @@
+# DET 用户指导手册
+
+> 适用版本：**dsh-essential-tools v2.4.1**（DET） · 平台：Windows · DSH `0.1.1-rc.2+`
+> 对象：**使用者**。想改代码请看 [DET修改.md](DET修改.md)；关心安全边界请看 [SECURITY.md](SECURITY.md)；模型工具清单见 [DET功能.md](DET功能.md)。
+
+---
+
+## 目录
+
+1. [DET 是什么](#1-det-是什么)
+2. [安装与卸载](#2-安装与卸载)
+3. [五分钟上手](#3-五分钟上手)
+4. [核心功能详解](#4-核心功能详解)
+   - [4.1 VTD 对话树（编辑 / 重试 / 分叉）](#41-vtd-对话树编辑--重试--分叉)
+   - [4.2 工程工具栏（运行 / 文件 / 版本）](#42-工程工具栏运行--文件--版本)
+   - [4.3 全局插件管理](#43-全局插件管理)
+   - [4.4 MDA / CDM / TCT（记忆与成本）](#44-mda--cdm--tct记忆与成本)
+   - [4.5 余额 / 单价 / 本对话花费 / MMS](#45-余额--单价--本对话花费--mms)
+   - [4.6 安全审计](#46-安全审计)
+   - [4.7 DET 管理器与「几乎完全关闭」](#47-det-管理器与几乎完全关闭)
+5. [权限模型](#5-权限模型)
+6. [浏览器控制扩展 🌐](#6-浏览器控制扩展-)
+7. [配置文件与数据位置](#7-配置文件与数据位置)
+8. [常见问题（FAQ）](#8-常见问题faq)
+9. [故障排查](#9-故障排查)
+10. [卸载与回滚](#10-卸载与回滚)
+11. [速查表](#11-速查表)
+
+---
+
+## 1. DET 是什么
+
+**DET = `dsh-essential-tools`**，一个 **DeepSeek Harness（DSH）永久插件**。它在 DSH 的 `web` profile 里常驻（重启不丢），并把自己注册进 **Settings → Plugin inventory**。
+
+它给 DSH 加上四类能力：
+
+| 能力 | 一句话 |
+| --- | --- |
+| 🌐 **浏览器控制** | 让模型操作**你已登录的浏览器**（扩展方案，四档开关由你掌握） |
+| 🌲 **VTD 对话树** | 任意消息可编辑 / 重试 → 真实分支；切分支时**工作区代码一起回滚** |
+| 🖥 **工程工具** | ▶ 编译运行 · 🗎 文件树预览编辑 · 🕘 程序版本快照与回退 |
+| 🧩 **管理器与成本** | 全局插件库（五档）、MDA/CDM/TCT 记忆体系、余额/单价/单轮花费、安全审计、网络权限五档 |
+
+**不用配置就能用**：不填 `lvalRoot` / `solution` 时，只有 ▶🗎🕘 这三个「工程」功能不启用，其余全部照常工作。
+
+---
+
+## 2. 安装与卸载
+
+### 2.1 前置条件
+
+| 项 | 要求 |
+| --- | --- |
+| 系统 | Windows（工程功能依赖 MSBuild / cmd.exe） |
+| DSH | `0.1.1-rc.2` 或更高 |
+| Profile | `web`（首次 `dsh web` 会自动创建） |
+| Node / npm | 随 DSH 安装即可 |
+
+### 2.2 安装（推荐：安装器）
+
+```powershell
+# 在仓库目录（含 install.ps1）执行
+.\install.ps1 -Profile web
+```
+
+安装器会：① 用 `dsh plugin --profile web add dsh-essential-tools` 装包；② 幂等地把注册块写进 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`（重复运行会先替换旧块）。
+
+### 2.3 安装（手动，等价）
+
+```powershell
+dsh plugin --profile web add dsh-essential-tools
+```
+
+然后在 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml` 末尾追加：
+
+```yaml
+- insert:
+    - id: dsh-essential-tools
+      name: 'dsh-essential-tools'
+      # config:                       # 可选：只在要用 ▶运行/🗎文件/🕘版本 时才需要
+      #   lvalRoot: 'C:\path\to\project'
+      #   srcDir:   'C:\path\to\project\src'
+      #   solution: 'C:\path\to\project\App.slnx'
+      #   msbuild:  '...\MSBuild.exe'   # 可选，缺失/不可用会自动探测
+      #   configuration: 'Debug'
+      #   platform: 'x64'
+      #   rollbackTargetDefault: 'minor'
+      #   bootFailLimit: 2
+```
+
+### 2.4 验证安装
+
+1. **重启 DSH**。
+2. Settings → **Plugin inventory** 应能看到 `dsh-essential-tools`。
+3. 对话界面：输入框左侧出现**网络权限下拉**，右下角出现**状态框**，右侧出现**工具栏**。
+
+### 2.5 带工程路径的安装
+
+```powershell
+.\install.ps1 -Profile web -LvalRoot 'D:\proj' -SrcDir 'D:\proj\src' -Solution 'D:\proj\App.slnx'
+```
+
+---
+
+## 3. 五分钟上手
+
+| # | 做什么 | 在哪做 |
+| --- | --- | --- |
+| 1 | 看一眼**网络权限**档位（默认最高档） | 输入框左侧下拉 |
+| 2 | 想让模型用你的浏览器 → 装载扩展并选「只读」起步 | 见 [第 6 章](#6-浏览器控制扩展-) |
+| 3 | 点任意用户消息上的 **✎ / ↻** → 编辑或重试 | 消息操作条 |
+| 4 | 想看模型刚才改了哪些代码 → 点 **🗎** | 右侧工具栏 |
+| 5 | 想知道这轮花了多少 → 点右下角状态框 | 右下角 |
+| 6 | 想装插件 → Settings → **全局插件管理** | 设置页 |
+
+> 任何已打开的面板按 **Esc** 关闭。
+
+---
+
+## 4. 核心功能详解
+
+### 4.1 VTD 对话树（编辑 / 重试 / 分叉）
+
+**痛点**：模型第 12 条答歪了，你只能重开一轮，上下文全丢。
+
+**做法**：在任意消息上点 **编辑（✎）** 或 **重试（↻）**。DET 不会改动原对话，而是创建一个**真实的分支子会话**（`origin: vtd-fork`，在侧边栏隐藏），让模型在新分支里重答。
+
+- **`<N>` 分叉选择器**：消息上显示该处有几个分支，点 `<` / `>` 切换。
+- **切分支会连带回滚代码**：DET 会快照当前工作区并恢复目标分支对应的代码状态（消息小版本机制），所以「回到那个分支」是**代码 + 对话**一起回到。
+- **对话页签是流式的**：宿主上报 `generating` 信号 → 生成中约 **700ms** 刷新、空闲约 **2.5s**，自动滚到底部并显示「正在生成…」。
+- **消息小版本**：自动记录 `baseline` / `edit` / `retry` / `auto-switch`，可单独回退。
+
+**查看被隐藏的真实会话**：DET 管理器 → **VTD 调试**（根会话 + 全部 fork 子会话 + 版本控制记录）。
+
+> ⚠️ 分叉会话是**真实会话**，会消耗提示词；但它让你不必重开一整轮。
+
+### 4.2 工程工具栏（运行 / 文件 / 版本）
+
+右侧竖排工具栏三个图标（需要 `config` 里填工程路径）：
+
+| 图标 | 名称 | 行为 |
+| --- | --- | --- |
+| ▶ | **运行** | 自动识别入口（`main`/`entry`/`run` 的 `.py`/`.cpp`，或 `.sln`/`.slnx`）→ MSBuild 编译 → 启动程序 |
+| 🗎 | **文件** | 工作区文件树（可折叠、显示层级与文件数）；点击**预览**，可直接**编辑保存** |
+| 🕘 | **版本** | 程序大版本：手动快照 / 回退（回退前自动备份）/ 删除，**只动代码文件** |
+
+**MSBuild 自动发现**：`msbuild` 未配置或路径失效时，按 `vswhere → 常见 VS 安装目录 → PATH` 顺序探测，结果缓存 60 秒；`lvalInfo` 会返回实际生效路径。
+
+**版本 id 安全**：快照 id 走白名单校验且必须存在于清单——不存在「用 id 穿越删除任意目录」的口子。
+
+### 4.3 全局插件管理
+
+Settings → **全局插件管理**。核心是**进程级、跨重启持久化**的插件库（存储域 `dsh_global_plugins`）。
+
+**五档位**：
+
+| 档位 | key | 行为 |
+| --- | --- | --- |
+| 全局启用 | `always` | 每个会话自动挂载 |
+| 对话AI可自行决定启用 | `ai-auto` | AI 可自行启用，无需审批 |
+| 对话内AI需审批启用 | `ai-approve` | 默认档：必须有你的批准 |
+| 不再会有新启用 | `frozen` | 拒绝新启用，已启用的会话保持 |
+| 全局禁用 | `disabled` | 立即停掉所有实例并拒绝启用 |
+
+**插件从哪来（三条通道）**：
+
+1. **从对话拉取**：列出所有运行中会话的动态 Cordis 插件，跨会话挑选并晋升为全局插件（代码本来就在本进程跑过）。
+2. **商店搜索**：`github` / `marketplace` / `leaderboard` / `radar` 四源；结果可生成 **AI 摘要**（本地缓存，不重复烧 token）。
+3. **URL 清单**：粘贴 `dsh-plugin.json` 清单地址或 `plugin/host.js` + `plugin/client.js` 约定格式。
+
+**从 GitHub 安装的两种方式**：
+
+| 方式 | 工具 | 特点 |
+| --- | --- | --- |
+| ① 直接下载 | `det_global_plugin_github_direct` | 直接拉源码入库，**会执行第三方代码**，返回可疑代码警告 |
+| ② AI 重写（更安全） | `det_global_plugin_github_rebuild` → `det_global_plugin_github_save` | 模型读源码 + 注入「病毒/漏洞检查上下文」，**自行编写等价版本**入库——**不直接执行第三方代码** |
+
+**常驻插件（如 `dbs`）**：走**二分开关**「启用 / 禁用」（`det_global_plugin_set_enabled`），实时经 Loader 卸载/装载、跨重启持久化、切换后自动刷新前端。
+
+**启动安全（Boot Guard）**：每次启动会重新应用持久化的常驻插件状态；若**连续启动失败**达到 `bootFailLimit`（默认 2）次，**自动禁用全部全局插件**并复位计数 —— 一个坏插件不会让你开不了机。
+
+**危险提示**：全局插件代码与动态 Cordis 插件一致，**以当前进程真实权限运行**。`scanCodeWarnings` 只是启发式提示，**不是安全边界**。只启用你审查过或信任的代码。
+
+### 4.4 MDA / CDM / TCT（记忆与成本）
+
+**MDA（Mixing Dialogue Agent）分层** —— Settings → **MDA 分组**，三选一（仿「外观」）：
+
+| 模式 | 分组方式 |
+| --- | --- |
+| `native` | 原生（默认，行为不变） |
+| 工作区组 | 工作区 → 分支模型区域 → 会话（左侧栏 `🔀 MDA 分组` 入口，可折叠） |
+| 模型组 | Model → 工作区 → 会话；模型层可见「全工作区」，可调用该 Model 内所有工作区对话 |
+
+**CDM（跨对话记忆）** —— 让模型读你**别的对话**里已经想过的东西：
+
+| 工具 | 作用 |
+| --- | --- |
+| `cdm_list` | 列出可读取的对话（侧边栏登记簿） |
+| `cdm_search` | 搜索与某内容相关的对话段（默认限当前工作区；`cross=true` 提权跨工作区） |
+| `cdm_read` | 读取某对话的片段 |
+
+> 登记簿只存「存在的对话」元数据，**不存对话本体**。
+
+**TCT（临时对话）** —— `det_tct`：一次性、低成本、**用完即焚**。传简短 prompt + 可选 preset（`review` / `summary` / `format` / `brainstorm`）+ 权限白名单 → 返回单段 feedback，无持久化。TCT 使用哪个模型可在 DET 设置里选。
+
+**模型合作（仅模型组）**：`mda_card`（用 TCT 生成某模型介绍）、`mda_activate`（向其它模型派活，⚠ 每次新建会话 + 消耗提示词，不鼓励常规使用）、`mda_create_no_workspace_agent`（建无工作区 Agent，cwd = `DSH_HOME\MDAtemp\<名>`）。
+
+### 4.5 余额 / 单价 / 本对话花费 / MMS
+
+右下角**状态框**（5 秒轮询）：
+
+- **余额**：官方接口 `GET https://api.deepseek.com/user/balance`；点击展开多币种明细与**预计耗尽天数**。
+- **单价芯片**：从官网定价页解析（中文页 CNY 优先，英文页 USD 兜底），按**峰 / 谷时段**动态显示；缓存 6 小时，解析失败回退上次成功值。
+  - **峰值时段** = 北京时间（UTC+8）**周一至周五 9:00–12:00、14:00–18:00**，其余为错峰。
+- **本对话花费**：当前会话累计估算。
+- **MMS（混合模型）开关**：独立于 DET 管理器；**开启才注册 `det_mms` 工具**及相关提示，关闭则彻底隐藏。
+
+**API key 从哪来（只由宿主解析）**：DET 配置 `dsApiKey` → DSH 凭据缝 → 启动环境变量；与模型设置共用一把 key。**绝不落盘 / 不进日志 / 不回传前端**；网络只访问 `api.deepseek.com` 与 `api-docs.deepseek.com`。DET 明确**没有**使用 MITM 本地代理、key 哈希台账、明文 key 配置文件，也没有任何遥测/统计/上报。
+
+### 4.6 安全审计
+
+工具栏 🛡 / 设置页内两个开关：
+
+| 开关 | 作用 |
+| --- | --- |
+| `secCmdAudit` | 每次工具调用前跑**一次独立模型审计**，高风险动作 `deny` |
+| `secPromptDefense` | Prompt 注入攻击防御 |
+
+审计记录写在 `det.secAudit.log`（可清空）。
+
+> ⚠️ **成本提醒**：审计是**逐次工具调用**串行跑 LLM，开启后延迟与费用都会明显上升。建议只在处理不可信内容时打开。
+
+### 4.7 DET 管理器与「几乎完全关闭」
+
+Settings → **DET 管理器** 里有功能开关（文件 / 运行 / 版本 / VTD / 插件管理 / MDA 分组），即时装载或卸载对应 UI，配置持久化在 `~/.dsh/storages/dsh_versions.json`。
+
+想回到**净版 DSH**：
+
+- 关 **插件管理** → 自动禁用**所有全局插件**（停止各会话实例；常驻插件实时卸载）。
+- 关 **MDA 分组** → 分组模式自动回到 `native`。
+
+DET 管理器本身始终保留，方便你随时打开回来。
+
+---
+
+## 5. 权限模型
+
+### 5.1 网络权限（5 档）
+
+输入框内联下拉，持久化键 `det.webperm`：
+
+| 档 | key | rank | 含义 |
+| --- | --- | --- | --- |
+| 禁用网络 | `off` | 0 | 禁止一切网络访问 |
+| 官方API搜索 | `api` | 1 | 仅 DeepSeek 官方 API（余额 / 单价也需要 ≥1） |
+| 搜索API搜索 | `search` | 2 | 允许搜索类 API；通用抓取需 ≥2 |
+| 静默浏览器仿真 | `silent` | 3 | 允许无头浏览器仿真（读网页） |
+| 使用用户浏览器 | `browser` | 4 | **驱动你的真实浏览器**（`det_browser` 必须 = 此档） |
+
+- 模型通过系统提示感知**当前档位**，所以它会知道「现在能不能上网」。
+- DET 对**自身**发起的请求按档位拦截；低于档位时工具直接报错而不是偷偷放行。
+- 浏览器控制还需**扩展已连接且不处于「关闭」档**。
+
+### 5.2 浏览器动作的审批
+
+非 **Full access** 权限模式下，浏览器动作（读写）会经 DSH `tools/pre-execute` `{kind:'ask'}` 走**产品审批**；Full access 免审。
+
+### 5.3 「插件代码 = 真实进程权限」这条要记住
+
+- DET 的**全局插件 / 动态插件代码**拥有当前进程全部能力（读写文件、执行命令、发网络）。DSH 官方沙箱**不是**安全边界。
+- DET 因此：安装/下载前**明文提示**「将以当前进程权限运行」并要求确认；商店安装记录 **commit sha** 供溯源；提供可疑特征扫描与「预览代码」。
+- **真正的边界 = 你的审批 + 你信任的来源**。
+
+---
+
+## 6. 浏览器控制扩展 🌐
+
+### 6.1 它是什么
+
+一个 **Edge / Chrome（Chromium）MV3 扩展**，通过**只绑本机 `127.0.0.1:9123`** 的 WebSocket 与 DSH 宿主通信，让模型操作**你已登录的浏览器**：内部系统、仪表盘、网页邮箱、本地 `file://` 页面……
+
+> ⚠️ 它是**浏览器扩展**，不是把 DSH 变成应用。DSH 是宿主，扩展是它操控你浏览器的「手」。
+
+### 6.2 装载（3 步）
+
+1. 地址栏打开 `edge://extensions`（Chrome 用 `chrome://extensions`）。
+2. 打开右上角 **开发人员模式**。
+3. 点 **加载解压缩的扩展** → 选择仓库里的 `browser-extension/` 目录。
+
+装好后点扩展图标，弹窗里就是**四档开关**。若你要操作 `file://` 本地页面，还需在该扩展详情里允许**访问文件 URL**。
+
+### 6.3 四档开关（由你掌握，DSH 只读）
+
+| 档位 | 模型能做什么 |
+| --- | --- |
+| `关闭 off` | 什么都不行 |
+| `只读 read` | 读网页：文本 / DOM / URL / 截图 |
+| `只写 write` | 导航 / 点击 / 填表 / 执行，**但不回传页面内容** |
+| `启用 on` | 读写完整能力（高危） |
+
+**建议**：从 `只读` 起步；需要模型点东西时再升到 `只写`；`启用` 只在必要时短暂打开。
+
+### 6.4 能力与工具
+
+| 类别 | 动作 / 工具 |
+| --- | --- |
+| 扩展动作 | 读：`read_text` / `read_dom` / `screenshot` / `get_url` / `get_title`；写：`navigate` / `click` / `fill` / `run` |
+| 模型工具（6 个） | `det_browser`、`web_human_search`（像人一样在搜索站搜索）、`web_insite_search`（在你已打开的标签页里找关键词）、`web_act`、`web_inspect`、`web_focus` |
+
+模型工具只有 6 个的原因是「打开标签页、点击、填表、读内容」被归到 `det_browser` 的 **action** 参数里，减少工具膨胀。
+
+### 6.5 三道门禁
+
+1. **宿主网络权限 = 第 4 档（使用用户浏览器）**，否则桥根本不启动、`det_browser` 直接拦截。
+2. **扩展侧档位**（关闭 / 只读 / 只写 / 启用）——**由用户在扩展实施，宿主无法覆盖**。
+3. **非 Full access 时的产品审批**。
+
+另外：仅连接本机 `127.0.0.1`；仅操作 DET 明确给出的 `tabId`；握手校验 Origin 防跨源；脚本注入使用**固定函数 + 参数**（不用 `new Function`）；桥**只保留最新一条扩展连接**（MV3 Service Worker 重启后的旧连接会被清掉，避免命令发到死连接上出现间歇性超时）。
+
+### 6.6 状态在哪看
+
+DET 管理器 → **浏览器控制** 状态块：Web 权限档位 / 桥是否运行 / 扩展是否连接 / 扩展当前模式。
+
+---
+
+## 7. 配置文件与数据位置
+
+| 内容 | 位置 |
+| --- | --- |
+| 插件注册 | `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml` |
+| VTD / 开关 / 自检 | `~/.dsh/storages/dsh_versions.json`（域 `dsh_versions`，表 `minor_versions` / `sessions` / `settings`） |
+| 全局插件库 | `~/.dsh/storages/dsh_global_plugins.json`（域 `dsh_global_plugins`，表 `plugins` / `store_cache` / `boot`） |
+| MDA 分组 | `~/.dsh/storages/dsh_mda.json`（域 `dsh_mda`，表 `mode` / `areas` / `model_cards`） |
+| 程序快照 | 工作区 `.lval-versions/`（已被 `.gitignore` 排除） |
+
+关键持久化键：`det.features` · `det.webperm` · `mms.model` · `det.secAudit.log` · `tct.model` · `det.registry.check`。
+
+---
+
+## 8. 常见问题（FAQ）
+
+**Q：装完没看到工具栏？**
+A：① 确认已**重启 DSH**；② Settings → Plugin inventory 里有没有 `dsh-essential-tools`；③ Settings → DET 管理器 里对应功能开关是否被关掉（关掉则不渲染）；④ 工程三项（▶🗎🕘）需要 config 里填工程路径。
+
+**Q：模型说它不能上网 / 不能用浏览器？**
+A：看输入框左侧**网络权限**档位。`det_browser` 必须 = 第 4 档，且扩展已连接、不处于「关闭」。
+
+**Q：扩展弹出「改成启用了，模型还说 ext-mode-off」？**
+A：这是 v2.4.1 修掉的问题。请更新到 2.4.1+：档位切换现在经 background 的 `setMode` RPC，会同时**持久化 + 更新徽标 + 通知宿主**。
+
+**Q：点浏览器操作偶尔超时（browser-timeout）？**
+A：v2.4.1 已修：桥只保留**最新**扩展连接。若仍偶发，重新在扩展页点一次「重新加载」，让 MV3 worker 重建连接。
+
+**Q：模型能读到我别的对话？**
+A：只有当你（或模型）调用 CDM 工具时：`cdm_list` / `cdm_search` / `cdm_read`；`cdm_search` 默认**限当前工作区**，跨工作区需要 `cross=true` 提权。登记簿不存对话本体。
+
+**Q：分叉会额外花钱吗？**
+A：会——它是**真实会话**。但比"重开一整轮对话"便宜得多，因为分支只重答出问题的那一段。
+
+**Q：为什么审计一开就变慢？**
+A：审计在**每次工具调用前**串行跑一次独立模型调用。建议按需开启。
+
+**Q：我的 API key 会被写到哪里吗？**
+A：不会。key 只由宿主解析（配置 → DSH 凭据缝 → 环境变量），只出现在请求头里；不落盘、不进日志、不回传前端。
+
+**Q：能不能把 DET 关掉（回到净版 DSH）？**
+A：Settings → DET 管理器，关掉各功能开关；关「插件管理」会连带禁用所有全局插件，关「MDA 分组」会回到 native。彻底不用则见[第 10 章](#10-卸载与回滚)。
+
+---
+
+## 9. 故障排查
+
+| 症状 | 排查顺序 |
+| --- | --- |
+| DSH 启动异常 | Boot Guard：连续失败达 `bootFailLimit`（默认 2）次会自动禁用全部全局插件。先看 DET 管理器里的启动健康记录，再逐个启用插件定位元凶 |
+| 面板不渲染 / 布局错乱 | 重启 + 强刷（Ctrl+F5）；确认 DSH 版本 ≥ `0.1.1-rc.2` |
+| 工程功能报找不到工作区 | `lvalRoot` 是否填对；`solution` 指向的 `.sln/.slnx` 是否存在 |
+| MSBuild 找不到 | 留空让它自动探测（vswhere → VS 目录 → PATH），或显式填 `msbuild`；用 `lvalInfo` 看实际生效路径 |
+| 余额/单价不显示 | 网络权限需 ≥ 第 1 档；确认能访问 `api.deepseek.com` |
+| 扩展连不上宿主 | 宿主侧网络权限是否第 4 档；宿主是否已重启（桥随权限档启动）；扩展页重新加载一次 |
+| 插件安装后行为异常 | 用「预览代码」+ 可疑特征扫描复核；必要时 `frozen` 或 `disabled` 降档，或直接删除 |
+| 想看清楚发生了什么 | DET 管理器 → VTD 调试（隐藏会话与版本记录）；🛡 安全审计日志 |
+
+---
+
+## 10. 卸载与回滚
+
+**停用（保留数据）**
+
+- Settings → DET 管理器：关掉各功能开关。
+- 全局插件：逐个置 `disabled`。
+
+**卸载**
+
+```powershell
+dsh plugin --profile web remove dsh-essential-tools
+```
+
+然后从 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml` 里删掉 `dsh-essential-tools` 的 `- insert:` 块（安装器重复运行时会自动替换该块）。
+
+**降级到旧版**
+
+```powershell
+dsh plugin --profile web add dsh-essential-tools@2.3.5   # 指定版本即可回退
+```
+
+**清理数据（谨慎，会丢历史）**
+
+- `~/.dsh/storages/dsh_versions.json` —— 消息小版本与登记簿
+- `~/.dsh/storages/dsh_global_plugins.json` —— 全局插件库与档位
+- `~/.dsh/storages/dsh_mda.json` —— MDA 分组
+- 工作区 `.lval-versions/` —— 程序快照
+
+---
+
+## 11. 速查表
+
+### 11.1 界面入口
+
+| 入口 | 位置 |
+| --- | --- |
+| 右侧工具栏 | 🧩插件 · ▶运行 · 🗎文件 · 🕘版本 · 🛡安全 |
+| 右下角状态框 | 价格（峰/谷）+ 余额 + 本对话花费 + MMS 开关（5s 轮询） |
+| 网络权限 | 输入框左侧下拉 |
+| VTD 对话树 | 对话页签 |
+| 消息操作条 | 编辑 / 重试 / `<N>` 分叉选择 |
+| MDA 分组 | 左侧栏底部 `🔀 MDA 分组` |
+| DET 管理器 / 全局插件 / MDA | Settings 对应区块 |
+
+### 11.2 模型工具（25 个）
+
+| 组 | 工具 |
+| --- | --- |
+| 全局插件（10） | `det_global_plugin_list` `_enable` `_disable` `_scan_installed` `_import_installed` `_set_enabled` `_github_direct` `_github_rebuild` `_github_save` `_store_search` |
+| 记忆 / 分层（8） | `det_tct` `cdm_list` `cdm_search` `cdm_read` `mda_list_areas` `mda_card` `mda_activate` `mda_create_no_workspace_agent` |
+| 浏览器（6） | `det_browser` `web_human_search` `web_insite_search` `web_act` `web_inspect` `web_focus` |
+| 混合模型（1） | `det_mms`（MMS 开关开启时才注册） |
+
+### 11.3 快捷键与约定
+
+- **Esc**：关闭任意已打开的 DET 面板。
+- 分叉选择器：`<` / `>` 切换上一个 / 下一个分叉。
+- 峰值时段：北京时间周一至周五 9:00–12:00、14:00–18:00。
+
+---
+
+需要更底层的内容：功能与端点清单见 [DET功能.md](DET功能.md)，改动记录见 [DET修改.md](DET修改.md)，运行结构见 [DET运行思路.md](DET运行思路.md)，安全边界见 [SECURITY.md](SECURITY.md)。

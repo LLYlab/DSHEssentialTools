@@ -3,181 +3,202 @@
 </p>
 
 <p align="center">
-  <b>A permanent DeepSeek Harness (DSH) plugin</b><br>
-  Project run &amp; code viewer · Program snapshots · VTD conversation tree (edit / retry / branches) · Message micro-versioning · DET manager · Global plugin control · MDA layering
+  <b>DET · dsh-essential-tools</b> — the plugin that turns DeepSeek Harness into a usable engineering cockpit.<br>
+  <b>Let the AI drive your own logged-in browser</b> · <b>Branch, edit and retry any conversation</b> · <b>Run / snapshot / roll back real projects</b> · <b>Manage every plugin and every token you spend</b>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT"></a>
-  <img src="https://img.shields.io/badge/DSH-0.1.1--rc.2-blue?style=flat-square" alt="DSH">
+  <img src="https://img.shields.io/badge/DeepSeek%20Harness-0.1.1--rc.2%2B-blue?style=flat-square" alt="DSH">
   <img src="https://img.shields.io/badge/type-permanent%20plugin-8c9eff?style=flat-square" alt="type">
-  <img src="https://img.shields.io/badge/version-2.4.0-8c9eff?style=flat-square" alt="version">
-  <img src="https://img.shields.io/badge/language-JavaScript-F7DF1E?style=flat-square" alt="JS">
+  <img src="https://img.shields.io/badge/version-2.4.1-8c9eff?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/tools-25%20model%20tools-7c4dff?style=flat-square" alt="tools">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Edge%20%2F%20Chrome-F7DF1E?style=flat-square" alt="platform">
+</p>
+
+<p align="center">
+  <a href="#-quick-start-60-seconds"><b>Quick start</b></a> ·
+  <a href="docs/GUIDE.md"><b>用户指导手册</b></a> ·
+  <a href="CHANGELOG.md"><b>Changelog</b></a> ·
+  <a href="docs/SECURITY.md"><b>Security</b></a> ·
+  <a href="docs/DET功能.md"><b>功能总览</b></a>
 </p>
 
 ---
 
-**DSH（DeepSeek Harness）永久插件** —— 与原生 DSH 风格高度一体、界面简洁的工程开发助手工具栏 + **VTD 虚拟对话树与版本管理**。随 DSH 常驻、重启不丢，自动出现在 **Settings → Plugin inventory**。
+## 😤 The problem
 
-> v2 起为**永久插件**（npm 包）；v1（动态插件，`plugin/` 目录）保留作开发/快速装载用途。
+If you hack on real code with an AI agent in the loop, you already know these four:
 
----
-
-### 💡 给谁用 · 解决什么
-
-| 给谁用 | 解决什么 |
-| --- | --- |
-| 用 VS / MSBuild 做 **C/C++ 桌面工程**、又常驻 DSH 的开发者 | 一键编译运行、代码速览、程序版本快照回退、对话分支管理 |
-| 重度使用 DSH 会话、想更好管理对话与跨会话记忆的开发者 | VTD 对话树（编辑 / 重试 / 分支）、消息小版本、CDM 跨对话记忆、TCT 临时对话、MDA 分层 |
-
-**为什么选它**：与原生 DSH 风格高度一体、界面简洁；随 DSH 常驻、重启不丢，自动出现在 Settings → Plugin inventory；内置 VTD 虚拟对话树（编辑 / 重试 / 分支）、消息小版本，以及全局插件管理与跨对话记忆体系。
-
-> 🚀 **快速安装**：见下方「Quick start」—— 通用安装器可一条命令完成（含 Register 进 DSH profile）。
-
----
-
-<details>
-  <summary>🆕 更新亮点（点击展开）</summary>
-
-## 🎉 更新亮点
-
-### v2.4.0 — 浏览器控制扩展 + 工具链自动发现 + 启动安全
-- **浏览器控制扩展（DET Browser Extension）**：新增长驻的浏览器扩展方案，供第 4 档「使用用户浏览器」权限驱动真实浏览器，安全注入（固定函数 + 参数，不用 `new Function`），适配 Edge / Chrome MV3。
-- **启动安全策略（Boot Guard）**：每次启动后自动应用持久化的常驻插件启用状态；若连续启动失败达到 `bootFailLimit`（默认 2）次，**自动禁用全部全局插件**并复位计数，避免反复故障拖垮启动。
-- **工具链自动发现（Auto MSBuild）**：配置的 `msbuild` 路径缺失或不可用时，自动通过 `vswhere` → 常见 VS 安装目录 → PATH 顺序探测本机可用的 `MSBuild.exe`，并缓存结果（TTL 60s）。`lvalInfo` 会返回实际生效的 MSBuild 路径。
-
-### v2.3.4 — VTD 分叉流式 + 对话对齐产品样式
-- **分叉也流式**：VTD 对话页签不再固定 4s 轮询。宿主 `treeView` 新增 `generating`（open-turn）信号，客户端依此在**生成中高频刷新（≈700ms）、空闲低频（≈2.5s）**，并带生长检测兜底。生成中自动滚到底、显示「正在生成…」提示。
-- **更像标准对话**：去掉普通用户 / 助手消息上的「用户 #seq / 助手 #seq」噪音标签，渲染与产品聊天更一致；保留分叉 `<N>` 选择器与编辑 / 重试等 VTD 特有能力。
-
-### v2.3.1–v2.3.3 — 功能开关、MDA 分层、CDM、TCT
-- **可近乎完全关闭**：DET 管理器新增「插件管理 / MDA 分组」开关键，关掉对应 UI 不再渲染；插件管理关闭时自动禁用所有全局插件，MDA 关闭时自动回到原生分组——让 DET 几乎完全关闭、回到净版 DSH。
-- **MDA（Mixing Dialogue Agent）分层**：设置新增「MDA 分组」（原生 / 工作区组 / 模型组、可折叠分组树）。
-- **CDM（CrossDialogueMemory）跨对话记忆**：`cdm_list` / `cdm_search`（可跨工作区）/ `cdm_read`。
-- **TCT（Temp Chat Tool）临时对话**：`det_tct` 一次性、低成本、用完即焚。
-
-### v2.2.0 — 更贴合原生 DSH 风格 + 简洁界面
-- 全局插件管理面板、VTD 对话页签、右侧工具栏统一对齐 DSH 原生层级 / 色彩 / 折叠与卡片语言。
-- 常驻插件「启用 / 禁用」二分开关；扫描已安装插件（`det_global_plugin_scan_installed`）；两种从 GitHub 安装插件的方式（直接下载 / AI 重写）。
-
-### v2.1.0 — 全局插件控制 + DeepSeek 余额/单价 + 安全加固
-- 进程级全局插件库（五档位）、一键从对话拉取插件、应用商店 / URL 下载安装、对话内 AI 工具。
-- 右下角 DeepSeek 余额悬浮卡、模型单价芯片、耗尽时间估算。
-
-</details>
-
-## ✨ Features
-
-### 🖥 右侧工具栏
-| 图标 | 名称 | 功能 |
+| Pain | What everyone does today | What DET does |
 | --- | --- | --- |
-| ▶ | 运行 | 自动识别工作区可运行入口（`main/entry/run` 的 py / cpp，或 `.sln/.slnx`），MSBuild 编译并启动程序 |
-| 🗎 | 文件 | 浏览当前会话工作区文件（文件夹折叠树），点击预览 / 编辑 |
-| 🕘 | 版本 | 程序大版本：手动快照 / 回退（回退前自动备份）/ 删除，**只动代码文件** |
+| 🧠 **One wrong turn kills the thread** — you want to re-ask from message #12, not start over | Copy-paste into a fresh chat and lose all context | **VTD**: edit / retry **any** message → a real hidden branch, switch back with `<N>`, and the **workspace code rolls back with you** |
+| 🌐 **The AI can't see or click what you see** — your logged-in dashboards, internal pages, file:// pages | Screenshot, paste, hand-hold, retry | **DET Browser Extension**: the model drives **your already-logged-in Edge/Chrome** through a localhost bridge you gate yourself (off / read / write / on) |
+| 🛠 **Build-run-look-check is a manual loop** | Alt-Tab to the IDE and terminal 40 times an hour | Right toolbar: **▶ run · 🗎 file tree + preview/edit · 🕘 program snapshots & rollback** |
+| 💸 **You have no idea what a session costs** | Find out at the end of the month | Live **balance + per-model price + per-turn cost + peak/off-peak estimate** in the corner |
 
-> 这三项为「工程」功能，需在 DSH profile 的插件配置里填 `lvalRoot` / `srcDir` / `solution`（`msbuild` 可选——缺失或不可用时自动探测本机 VS/MSBuild）。
+DET (the plugin `dsh-essential-tools`) is the **permanent** DeepSeek Harness plugin that fixes all four — and adds a full **plugin manager**, **conversation memory layer** and **security audit** on top. It lives in your `web` profile, survives restarts, and shows up in **Settings → Plugin inventory**.
 
-### 🌲 VTD 虚拟对话树
-- **编辑 / 重试**用户消息 → 创建真实分支子会话（`origin: vtd-fork`，侧边栏隐藏）让模型重答，原对话保留。
-- **`<N>` 分叉选择器**：分支间切换，自动**快照当前工作区并按目标分支恢复代码**（消息小版本机制）。
-- **VTD 对话标签**：分支感知消息流 + 精细 Markdown、推理折叠、工具调用 / 结果卡片；**生成中流式刷新**。
-- **消息小版本**：`baseline` / `edit` / `retry` / `auto-switch` 自动记录，可回退。
+> 🎁 **Zero config:** without project paths, every conversation/token/plugin feature works out of the box. Add paths only when you want ▶ run.
 
-### 🛠 DET 管理器（Settings 页面）
-- 四个功能开关（文件 / 运行 / 版本 / VTD）+ **插件管理 / MDA 分组**开关键：即时装载 / 卸载 UI，持久化于 `~/.dsh/storages/dsh_versions.json`。
-- **会话侧边栏登记簿**：只存“存在的对话”元数据，**不存对话本体**；`session/created` 即时登记 + 60s 节流自检 + 手动“自检并修复”。
-- **VTD 调试**：查看被隐藏的真实对话（根会话 + 全部 fork 子会话）与自动版本控制记录。
+---
 
-### 🧩 全局插件控制（Settings 独立条目「全局插件管理」）
-- **全局插件库**：进程级、跨重启持久化插件清单（存储域 `dsh_global_plugins`），每个插件有名称、描述、来源与**五个档位**（`always` / `ai-auto` / `ai-approve` / `frozen` / `disabled`）。
-- **来源一·从对话拉取**：列出所有运行中会话的动态 Cordis 插件（跨会话选择），一键晋升为全局插件。
-- **来源二·应用商店 / URL 下载**：GitHub 搜索 DSH 插件 → 结果窗口 + **AI 摘要**（本地存档缓存，不重复耗 token）→ 安装；或直接粘贴 JSON 清单 URL 下载。
-- **两种从 GitHub 获取插件的方式**：① 直接下载（`det_global_plugin_github_direct`）；② **AI 读取源码自行编写**（`det_global_plugin_github_rebuild` → `det_global_plugin_github_save`），注入「病毒 / 漏洞检查上下文」，**不直接执行第三方代码**。
-- **对话内 AI 工具**：`det_global_plugin_list/enable/disable`、`det_global_plugin_scan_installed`、`det_global_plugin_import_installed`、`det_global_plugin_set_enabled`。
-- **扫描已安装插件 + 常驻插件二分开关**：对 DBS 这类跨会话常驻插件做「启用 / 禁用」，实时经 Loader 卸载 / 装载、跨重启持久化、切换后自动刷新前端。
-- **启动安全（Boot Guard）**：连续启动失败达到阈值自动禁用全部全局插件，防止反复故障。
-- ⚠ 安全口径：全局插件代码与动态 Cordis 插件一致，以当前进程真实权限运行；安装 / 下载前有明确提示。
+## ✨ Feature tour
 
-### 🧭 MDA 分层（Mixing Dialogue Agent）· CDM · TCT
-- **「MDA 分组」设置区（仿「外观」三选一 + 图标）**：原生 / 工作区组 / 模型组；左侧栏底部「🔀 MDA 分组」入口，分组树可折叠。
-- **CDM（CrossDialogueMemory）**：跨对话读取 / 搜索对话段——`cdm_list` / `cdm_search`（默认限定当前工作区，`cross` 提权可跨工作区）/ `cdm_read`。
-- **TCT（Temp Chat Tool）**：一次性临时对话——`det_tct`（简短 prompt + 可选 preset + 权限控制 → 单段 feedback → 会话即焚、无持久化）；DET 设置内可选 TCT 模型。
-- **模型合作 / 介绍（仅模型组）**：`mda_card`（用 TCT 生成模型介绍）、`mda_activate`（⚠ 耗提示词、不鼓励）、`mda_list_areas`。
+### 🌐 Browser control — *the headline act*
+A real **MV3 extension** (Edge / Chrome) connects to the DSH host over a **localhost-only WebSocket** (`127.0.0.1:9123`) so the model can operate the browser **you are already logged into** — internal tools, dashboards, webmail, local `file://` pages, whatever you have open.
 
-### 💰 DeepSeek 余额 · 模型单价
-- **右下角余额悬浮卡**：官方接口 `GET https://api.deepseek.com/user/balance`，60s 自动刷新 + 手动刷新；点击展开多币种明细与**预计耗尽天数**。
-- **模型选择旁的单价芯片**：从 DeepSeek **官网定价页（中文页优先 CNY，英文页 USB 兜底）**解析每模型单价，按**峰值 / 错峰时段**动态显示（峰值 = 北京时间周一至五 9:00-12:00 / 14:00-18:00）；6 小时缓存、解析失败回退上次成功值。
-- **API key 来源（宿主解析，绝不落盘 / 日志 / 回传）**：DET 配置 `dsApiKey` → DSH 凭据缝 → 启动环境变量；与模型设置共用一把 key。
-- **安全剔除**：明确未采用 MITM 本地代理、key 哈希台账、明文 key 配置文件、任何遥测 / 统计 / 上报；网络仅访问 `api.deepseek.com` 与 `api-docs.deepseek.com`。
+- **Read:** `read_text` · `read_dom` · `screenshot` · `get_url` · `get_title`
+- **Write:** `navigate` · `click` · `fill` · `run`
+- **Six model tools:** `det_browser` plus `web_human_search` (search like a human), `web_insite_search` (find it in your open tabs), `web_act`, `web_inspect`, `web_focus`
+- **You hold the permission dial** — the four-position switch lives in the **extension popup**, and DSH can only read it:
+  | Mode | Model can |
+  | --- | --- |
+  | `关闭 off` | nothing at all |
+  | `只读 read` | read pages (text / DOM / URL / screenshot) |
+  | `只写 write` | navigate, click, fill, run — **but no page content comes back** |
+  | `启用 on` | full read + write |
+- **Double gate:** the host refuses to even start the bridge unless **network permission = tier 4 (use your browser)**; below that, `det_browser` is blocked before it reaches your browser.
+- **Approval aware:** outside Full access mode, browser actions go through DSH's `tools/pre-execute` approval flow; Full access is exempt.
+- Hardened: origin-checked handshake, injection via fixed function + arguments (never `new Function`), only the `tabId` DSH names, and the bridge keeps only the **newest** extension connection so stale MV3 service workers can't eat your commands.
 
-### 📋 消息分类
-真实用户输入（`source.kind === 'user'`）才作为用户气泡；系统代提（上下文注入 / 审批提示 / 技能目录等）与空消息渲染为折叠的“上下文注入”行；工具结果按卡片渲染——不会混在用户气泡里。
+➡️ Setup: [`browser-extension/README.md`](browser-extension/README.md) · deep dive in the [指导手册](docs/GUIDE.md#6-浏览器控制扩展-)
 
-## 🚀 Quick start
+### 🌲 VTD — virtual conversation tree
+Stop throwing conversations away.
 
-> 通用安装器（推荐）：安装 npm 包并把插件注册进 DSH profile，**不含任何工程专属路径**。
+- **Edit / retry any user message** → creates a genuine branch child session (`origin: vtd-fork`, hidden from the sidebar). Your original thread is untouched.
+- **`<N>` fork selector** on messages: hop between branches, and DET **snapshots the workspace and restores the target branch's code** for you (message micro-versions).
+- **Streaming branch view:** no fixed 4 s polling — the host signals `generating`, so the tab refreshes at ≈700 ms while tokens flow and ≈2.5 s when idle, auto-scrolls, and shows “正在生成…”.
+- **Product-native rendering:** real user bubbles only, context injections folded away, tool calls/results as cards, reasoning folded, fine-grained Markdown.
+- **Message micro-versions:** `baseline` / `edit` / `retry` / `auto-switch` recorded automatically and restorable.
+
+### 🖥 Right-hand toolbar — project work without leaving the chat
+| | Tool | What it does |
+| --- | --- | --- |
+| ▶ | **Run** | Finds your entry point (`main/entry/run` .py/.cpp, or `.sln/.slnx`), builds with MSBuild, launches the program |
+| 🗎 | **Files** | Workspace file tree (collapsible, counts, indent), click to preview or edit in a modal |
+| 🕘 | **Versions** | Program-level snapshots: manual snapshot / roll back (auto-backup first) / delete — **code files only** |
+| 🧩 | **Plugins** | Jump into the plugin manager / this conversation's plugin switches |
+| 🛡 | **Security** | Audit log and security switches |
+
+MSBuild missing or misconfigured? **Auto-discovery**: `vswhere` → common VS install dirs → `PATH`, cached for 60 s, and `lvalInfo` reports the path actually in use.
+
+### 🧩 Global plugin manager — one library, five levels, two install paths
+- **Library** across the whole process (storage domain `dsh_global_plugins`, survives restarts). Every plugin carries a **level**:
+  `全局启用 always` · `对话AI可自行决定启用 ai-auto` · `对话内AI需审批启用 ai-approve` · `不再会有新启用 frozen` · `全局禁用 disabled`
+- **Bring plugins in:** ① promote a live dynamic Cordis plugin from any running conversation; ② search the store (GitHub / marketplace / leaderboard / radar) with a cached AI summary; ③ paste a manifest URL.
+- **From GitHub two ways:** ① **direct download** (`det_global_plugin_github_direct`); ② **AI reads the source and rewrites an equivalent, safer version** (`det_global_plugin_github_rebuild` → `det_global_plugin_github_save`) — the third-party code is **never executed**, and both paths return virus/vuln warnings.
+- **Resident plugins** (e.g. `dbs`) get a clean **enable/disable** switch that hot-unloads/reloads through the loader, persists across restarts, and refreshes the UI (`det_global_plugin_set_enabled`).
+- **Boot Guard:** persisted enable-state is re-applied on boot; `bootFailLimit` consecutive boot failures (default 2) auto-disable **all** global plugins so a bad plugin can never brick your startup.
+- **In-conversation tools:** `det_global_plugin_list/enable/disable/scan_installed/import_installed/set_enabled/github_direct/github_rebuild/github_save/store_search`.
+
+### 🧭 MDA · CDM · TCT — memory and cost control
+- **MDA (Mixing Dialogue Agent) layering:** `native` / `workspace` group / `model` group (collapsible tree from the sidebar `🔀 MDA 分组`).
+- **CDM (CrossDialogueMemory):** `cdm_list` / `cdm_search` (workspace-scoped by default, `cross=true` to escalate) / `cdm_read` — retrieve what you already worked out in another conversation.
+- **TCT (Temp Chat Tool):** `det_tct` — one prompt, optional preset (`review` / `summary` / `format` / `brainstorm`), typed permissions, one feedback string, **session destroyed, nothing persisted**.
+- **Model collaboration (model group):** `mda_card` writes a model's profile with TCT; `mda_activate` dispatches work to another model (⚠ token-hungry, off by default); `mda_create_no_workspace_agent` spins up a workspace-less agent.
+
+### 📊 DeepSeek balance · pricing · per-turn cost
+- Corner status card: balance from `api.deepseek.com/user/balance`, refreshed every 5 s, expandable to multi-currency detail and **days-until-empty** estimate.
+- **Per-model price chip** parsed from the official pricing page (CNY page first, USD fallback), switching between **peak / off-peak** (Beijing time Mon–Fri 09:00–12:00 & 14:00–18:00 = peak), cached 6 h with last-good fallback.
+- **Per-turn cost** for the conversation you're in.
+- **Key handling:** resolved by the host only (config → DSH credential seam → env var), lives only in a request header — **never written to disk, never logged, never sent to the client**. No MITM proxy, no key ledger, no telemetry. Network touches only `api.deepseek.com` and `api-docs.deepseek.com`.
+
+### 🛡 Security audit + network permission tiers
+- Optional pre-execution audit: every tool call gets one independent model review; high-risk calls are `deny`-ed and logged (`secCmdAudit`, `secPromptDefense`). ⚠ It costs latency and tokens per call.
+- **Network permission — 5 tiers** (inline dropdown in the input row, persisted as `det.webperm`):
+
+  | Tier | key | Meaning |
+  | --- | --- | --- |
+  | 禁用网络 | `off` | no network at all |
+  | 官方API搜索 | `api` | DeepSeek official API only (balance/pricing need ≥1) |
+  | 搜索API搜索 | `search` | search APIs; generic fetch needs ≥2 |
+  | 静默浏览器仿真 | `silent` | headless browser simulation (read pages) |
+  | 使用用户浏览器 | `browser` | **drives your real browser** (`det_browser` needs exactly this) |
+
+### 🎛 Almost completely optional
+DET manager in Settings has per-feature switches (files / run / versions / VTD / plugin manager / MDA). Turn **plugin manager** off and all global plugins are disabled; turn **MDA** off and grouping returns to native — i.e. DET can fade back to a stock DSH in two clicks, while staying reachable.
+
+---
+
+## 🚀 Quick start (60 seconds)
+
+**Requirements:** Windows, DeepSeek Harness `0.1.1-rc.2+`, PowerShell, a `web` profile (auto-created on first `dsh web`).
 
 ```powershell
-# 1) 克隆 / 进入仓库后运行通用安装器（默认 profile=web，可 -Profile 指定）
+# Option A — installer from the clone (recommended: installs + registers the plugin)
 .\install.ps1 -Profile web
 
-# 2) 重启 DSH → 插件常驻（永久），Settings → Plugin inventory 可见
-```
-
-手动安装（等价）：
-```powershell
+# Option B — manual, exactly equivalent
 dsh plugin --profile web add dsh-essential-tools
 ```
 
-然后在 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml` 末尾注册（id / name 必填，`config` 可选——**工程路径为空时，工程类功能不启用，其余功能照常**）：
+Then restart DSH. `dsh-essential-tools` appears under **Settings → Plugin inventory**, with its own **DET 管理器** section.
+
+<details>
+<summary>Registering by hand / adding project paths / config reference</summary>
+
+Append to `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`:
 
 ```yaml
 - insert:
     - id: dsh-essential-tools
       name: 'dsh-essential-tools'
-      # config:                     # 可选：要为「工程」功能填上项目路径才需要
+      # config:                      # optional — only needed for the ▶ run / 🗎 file / 🕘 version tools
       #   lvalRoot: 'C:\path\to\project'
       #   srcDir: 'C:\path\to\project\src'
       #   solution: 'C:\path\to\project\App.slnx'
-      #   msbuild: 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe'   # 可选：缺失或不可用时自动探测
+      #   msbuild: 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe'  # optional, auto-discovered
       #   configuration: 'Debug'
       #   platform: 'x64'
       #   rollbackTargetDefault: 'minor'
-      #   bootFailLimit: 3          # 可选：连续启动失败次数阈值（默认 2）
+      #   bootFailLimit: 2           # consecutive boot failures before auto-disabling all global plugins
 ```
 
-> v1 动态装载（仅开发用）：`cordis_define` 创建并粘贴 `plugin/host.js` / `plugin/client.js`，`cordis_run` 激活。
-
-## 🧩 Capabilities & compatibility
-
-<details>
-<summary>端点清单（dshEssentialTools/*）与技术细节</summary>
-
-**Host 半区**（`lib/index.js`）：`TypertRemoteService` 子类 + `ctx.typert.register`（src-json codec）；依赖服务经 `ctx.get` 读取，缺失安全降级。
-**VTD 存储域**（`lib/vtd/index.js`）：`dsh_versions` 域（version 2，无迁移）：`minor_versions` / `sessions`（登记簿）/ `settings`（开关与自检报告）。
-**全局插件存储域**（`lib/global.js`）：`dsh_global_plugins` 域（version 1）：`plugins` / `store_cache` / `boot`（启动健康记录）。
-**Client 半区**（`lib/client.js`）：`window.__ModuleLoader__.load` bundle，插槽 `shell.overlay` / `conversation.view` / `conversation.chat.user-actions` / `settings.section`。
-
-端点（共 75 个，按 `METHOD_NAMES` 白名单）：
-- **工程**：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalWriteFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete`
-- **VTD**：`treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor`
-- **登记簿 / 开关**：`registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet`
-- **全局插件**：`gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpStoreSources` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `gpUpdateCode` `gpSecurityReview`
-- **TCT / CDM / MDA**：`tctRun` `tctModels` `tctSetModel` `cdmList` `cdmSearch` `cdmRead` `mdaGet` `mdaSetMode` `mdaAreaList` `mdaAreaCreate` `mdaAreaRemove` `mdaAreaAddSession` `mdaAreaRemoveSession` `mdaNewConversation` `mdaCreateNoWorkspaceAgent` `mdaCard` `mdaActivate`
-- **余额 / 权限 / MMS / 审计 / 浏览器**：`dsBalance` `dsPrice` `dsSessionCost` `webPermGet` `webPermSet` `mmsModels` `mmsSetModel` `mmsRun` `secAuditLog` `secAuditClear` `browserStart` `browserStatus` `browserExec`
-
-模型工具（共 25 个，对话内 AI 可见）：**全局插件 10** —— `det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable` `det_global_plugin_scan_installed` `det_global_plugin_import_installed` `det_global_plugin_set_enabled` `det_global_plugin_github_direct` `det_global_plugin_github_rebuild` `det_global_plugin_github_save` `det_global_plugin_store_search`；**记忆 / 分层 8** —— `det_tct` `cdm_list` `cdm_search` `cdm_read` `mda_list_areas` `mda_card` `mda_activate` `mda_create_no_workspace_agent`；**浏览器 6** —— `det_browser` `web_human_search` `web_insite_search` `web_act` `web_inspect` `web_focus`；**MMS 1** —— `det_mms`（开关开启时才注册）。
+Leave `config` empty and everything except the project tools still works.
 
 </details>
 
-> ⚠️ 需要 DSH 0.1.1-rc.2+。
-> ⚠️ **本机对 DSH 自带前端打过一次补丁**：`node_modules/@deepseek-ai/dsh-client-runtime/lib/client.js` 被 `patch-frontend-retry.cjs` 修改过，回滚点 `client.js.dsh-retry-patch.bak` 就在同目录（该脚本已归档到 `~/.dsh/_archive/shipped-code-patch/`）。**升级 DSH 会覆盖该文件、补丁随之失效**——若前端出现重试/编辑相关异常，先比对那个 `.bak`。
+<details>
+<summary>Optional: enable the browser extension</summary>
 
-## 🔒 安全
-安全设计、五维审查结论（插件越权 / 恶意代码 / 易错点 / 外部攻击面 / 开源泄露）与已落实修复清单见 [`docs/SECURITY.md`](docs/SECURITY.md)。要点：插件代码 = 当前进程真实权限（非安全边界，请只启用信任的代码）；下载 / 安装全链路 SSRF 防护 + 可疑代码扫描 + commit 溯源；API key 仅宿主解析、绝不落盘 / 回传。
+1. `edge://extensions` (or `chrome://extensions`) → enable **Developer mode** → **Load unpacked** → pick `browser-extension/`.
+2. In DET, set **network permission = 使用用户浏览器 (tier 4)**.
+3. Click the extension icon and pick a mode — start with **只读** and move up only when you need it.
+4. Ask the model to work on your open tab; watch the **浏览器控制** status block in DET.
 
-## 📝 面向维护者的内部文档
-实现细节、文件结构与「如何低成本地安全改这段代码」的指南见 [`docs/AI_GUIDE.md`](docs/AI_GUIDE.md)（**仅本地**，已被 `.gitignore` 排除，不随包 / 仓库发布）。
+</details>
+
+<details>
+<summary>v1 dynamic loading (development only)</summary>
+
+`cordis_define` with `plugin/host.js` + `plugin/client.js`, then `cordis_run`. v2 (npm) is the supported path.
+
+</details>
+
+---
+
+## 📚 Documentation
+
+| Doc | What's inside |
+| --- | --- |
+| **[docs/GUIDE.md](docs/GUIDE.md)** | 🧑‍🏫 **用户指导手册** — install, first-run walkthrough, every feature step by step, permission model, FAQ, troubleshooting, uninstall |
+| [docs/DET功能.md](docs/DET功能.md) | Feature inventory: 25 model tools, 75 endpoints, 8 UI slots, storage domains, permission tiers |
+| [docs/DET修改.md](docs/DET修改.md) | Change/dev log: what was changed and why |
+| [docs/DET运行思路.md](docs/DET运行思路.md) | Architecture and runtime flow |
+| [docs/SECURITY.md](docs/SECURITY.md) | Security design, five-dimension review, known boundaries, mitigations |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Implementation-level architecture |
+
+---
+
+## 🔒 Security in one paragraph
+
+Plugin code runs with the **real permissions of the DSH process** — that is not a sandbox, so only enable code you trust (DET says this loudly before every install). What DET does add: SSRF protection on every host-side fetch (http/https only, no credentials in URL, private/loopback/metadata addresses rejected, **DNS re-checked after resolution** to stop rebinding, manual redirects re-validated per hop, 5-hop cap), 15 s timeouts and `Content-Length` pre-checks, suspicious-code scanning with commit-SHA provenance on store installs, quoted `cmd.exe` argv to kill argument-splitting/injection, browser bridge bound to `127.0.0.1` with origin-checked handshake and an extension-side gate the host cannot override, approval routing for browser actions outside Full access, and a credential path that never persists your API key. The blacklist scanner is a **hint, not a boundary**; the real boundary is your approval.
+
+## 🤝 Contributing
+Issues and PRs welcome at [LLYlab/DSHEssentialTools](https://github.com/LLYlab/DSHEssentialTools). The browser extension must be tested by loading it unpacked; the npm package never ships it (`.npmignore`).
 
 ## License
 [MIT](LICENSE) © 2026 L2959159224
