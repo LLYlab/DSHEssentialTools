@@ -158,13 +158,20 @@ dsh plugin --profile web add dsh-essential-tools
 **全局插件存储域**（`lib/global.js`）：`dsh_global_plugins` 域（version 1）：`plugins` / `store_cache` / `boot`（启动健康记录）。
 **Client 半区**（`lib/client.js`）：`window.__ModuleLoader__.load` bundle，插槽 `shell.overlay` / `conversation.view` / `conversation.chat.user-actions` / `settings.section`。
 
-端点：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete` `treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor` `registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet` `gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `gpUpdateCode` `gpSecurityReview` `tctRun` `tctModels` `tctSetModel` `cdmList` `cdmSearch` `cdmRead` `mdaGet` `mdaSetMode` `mdaAreaList` `mdaAreaCreate` `mdaAreaRemove` `mdaAreaAddSession` `mdaAreaRemoveSession` `mdaNewConversation` `mdaCard` `mdaActivate` `dsBalance` `dsPrice` `browserStart` `browserStop` `browserSend`（扩展桥）
+端点（共 75 个，按 `METHOD_NAMES` 白名单）：
+- **工程**：`lvalInfo` `lvalListFiles` `lvalReadFile` `lvalWriteFile` `lvalRun` `workspaceDetectEndpoint` `verProgCreate` `verProgList` `verProgRestore` `verProgDelete`
+- **VTD**：`treeView` `editMessage` `retryMessage` `switchFork` `newMessage` `debugSessions` `debugMinor`
+- **登记簿 / 开关**：`registryList` `registrySelfCheck` `detFeatureGet` `detFeatureSet`
+- **全局插件**：`gpList` `gpCordisInventory` `gpPull` `gpDownload` `gpStoreSearch` `gpStoreInspect` `gpStoreSummarize` `gpStoreSources` `gpInstall` `gpGithubDirect` `gpGithubRebuild` `gpGithubSave` `gpScanInstalled` `gpImportInstalled` `gpSetPermanentEnabled` `gpSetLevel` `gpSetMeta` `gpDelete` `gpSessionEnable` `gpSessionDisable` `gpCheckApproval` `gpCode` `gpUpdateCode` `gpSecurityReview`
+- **TCT / CDM / MDA**：`tctRun` `tctModels` `tctSetModel` `cdmList` `cdmSearch` `cdmRead` `mdaGet` `mdaSetMode` `mdaAreaList` `mdaAreaCreate` `mdaAreaRemove` `mdaAreaAddSession` `mdaAreaRemoveSession` `mdaNewConversation` `mdaCreateNoWorkspaceAgent` `mdaCard` `mdaActivate`
+- **余额 / 权限 / MMS / 审计 / 浏览器**：`dsBalance` `dsPrice` `dsSessionCost` `webPermGet` `webPermSet` `mmsModels` `mmsSetModel` `mmsRun` `secAuditLog` `secAuditClear` `browserStart` `browserStatus` `browserExec`
 
-模型工具（对话内 AI）：**`det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable` `det_global_plugin_scan_installed` `det_global_plugin_import_installed` `det_global_plugin_set_enabled` `det_global_plugin_github_direct` `det_global_plugin_github_rebuild` `det_global_plugin_github_save` `det_tct` `cdm_list` `cdm_search` `cdm_read` `mda_list_areas` `mda_card` `mda_activate`**
+模型工具（共 25 个，对话内 AI 可见）：**全局插件 10** —— `det_global_plugin_list` `det_global_plugin_enable` `det_global_plugin_disable` `det_global_plugin_scan_installed` `det_global_plugin_import_installed` `det_global_plugin_set_enabled` `det_global_plugin_github_direct` `det_global_plugin_github_rebuild` `det_global_plugin_github_save` `det_global_plugin_store_search`；**记忆 / 分层 8** —— `det_tct` `cdm_list` `cdm_search` `cdm_read` `mda_list_areas` `mda_card` `mda_activate` `mda_create_no_workspace_agent`；**浏览器 6** —— `det_browser` `web_human_search` `web_insite_search` `web_act` `web_inspect` `web_focus`；**MMS 1** —— `det_mms`（开关开启时才注册）。
 
 </details>
 
-> ⚠️ 需要 DSH 0.1.1-rc.2+；`session.list` 的浏览器端 schema 需接受 `origin: 'vtd-fork'`（会话层 `dsh-session` 已支持；API/UI 层若缺失会导致会话列表解析失败——确认上游修复或按 `ARCHITECTURE.md` 说明打本地补丁）。
+> ⚠️ 需要 DSH 0.1.1-rc.2+。
+> ⚠️ **本机对 DSH 自带前端打过一次补丁**：`node_modules/@deepseek-ai/dsh-client-runtime/lib/client.js` 被 `patch-frontend-retry.cjs` 修改过，回滚点 `client.js.dsh-retry-patch.bak` 就在同目录（该脚本已归档到 `~/.dsh/_archive/shipped-code-patch/`）。**升级 DSH 会覆盖该文件、补丁随之失效**——若前端出现重试/编辑相关异常，先比对那个 `.bak`。
 
 ## 🔒 安全
 安全设计、五维审查结论（插件越权 / 恶意代码 / 易错点 / 外部攻击面 / 开源泄露）与已落实修复清单见 [`docs/SECURITY.md`](docs/SECURITY.md)。要点：插件代码 = 当前进程真实权限（非安全边界，请只启用信任的代码）；下载 / 安装全链路 SSRF 防护 + 可疑代码扫描 + commit 溯源；API key 仅宿主解析、绝不落盘 / 回传。

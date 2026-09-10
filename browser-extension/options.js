@@ -14,8 +14,9 @@ function loadMode() {
 function setMode(next) {
   return new Promise((resolve) => {
     if (MODES.indexOf(next) < 0) { resolve(mode); return; }
-    chrome.storage.local.set({ dshBrowserMode: next }, () => {
-      mode = next;
+    // 走 background 的 setMode RPC:持久化 + 徽标 + 通知 DSH 宿主(宿主才能立刻放行)。
+    chrome.runtime.sendMessage({ type: "setMode", mode: next }, (res) => {
+      mode = (res && res.mode) || next;
       render();
       resolve(mode);
     });

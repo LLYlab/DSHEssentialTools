@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DSH 浏览器控制 (dsh-essential-tools)",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "让 DeepSeek Harness (DET) 通过本地 WebSocket 控制你已登录的浏览器;含 关闭/只读/只写/启用 四档开关。仅连接本机 127.0.0.1:9123,仅操作 DSH 指定的标签页。",
   "author": "LSH",
   "permissions": [

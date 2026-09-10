@@ -10,8 +10,15 @@ function loadMode(cb) {
   });
 }
 
+// 走 background 的 setMode RPC:它会持久化 + 更新徽标 + 把新档位推给 DSH 宿主。
+// 直接写 chrome.storage 也能生效于扩展侧门禁,但宿主收不到通知,会继续按旧档位拒绝
+// (症状:改成「启用」后 det_browser 仍报 ext-mode-off)。
 function setMode(next, cb) {
-  chrome.storage.local.set({ dshBrowserMode: next }, () => { mode = next; render(); cb && cb(); });
+  chrome.runtime.sendMessage({ type: "setMode", mode: next }, (res) => {
+    mode = (res && res.mode) || next;
+    render();
+    cb && cb();
+  });
 }
 
 function render() {

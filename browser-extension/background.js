@@ -45,6 +45,26 @@ function setBadge(m) {
   } catch (e) {}
 }
 
+/**
+ * 聚焦窗口,但**不改变它的尺寸/最大化/全屏状态**。
+ * 只有窗口处于 minimized 时才需要 state:"normal" 才能被聚焦;
+ * 对已最大化的窗口强制 state:"normal" 会把它还原成普通大小——
+ * 用户观感就是「页面突然缩小 / 窗口莫名置顶」。
+ */
+function focusWindowPreservingState(windowId) {
+  return new Promise((resolve) => {
+    if (windowId == null) { resolve(); return; }
+    try {
+      chrome.windows.get(windowId, {}, (w) => {
+        const err = chrome.runtime.lastError;
+        const state = err || !w ? null : w.state;
+        const opts = state === "minimized" ? { focused: true, state: "normal" } : { focused: true };
+        try { chrome.windows.update(windowId, opts, () => resolve()); } catch (e) { resolve(); }
+      });
+    } catch (e) { resolve(); }
+  });
+}
+
 // ── WebSocket:与 DSH 宿主双向通信 ────────────────────────────────────
 let ws = null;
 let reconnectTimer = null;
@@ -60,7 +80,9 @@ function connect() {
   ws.onopen = () => {
     reconnectDelay = RECONNECT_MIN;
     // 握手:告知宿主身份与当前模式。
-    sendRaw({ type: "hello", version: 1, mode, extension: "dsh-essential-tools" });
+    // 必须重新读一次 storage:service worker 冷启动时模块级 mode 可能仍是默认 "off",
+    // 直接发它会令宿主一直按「关闭档」判断(表现为 det_browser 报 ext-mode-off)。
+    loadMode().then((m) => sendRaw({ type: "hello", version: 1, mode: m, extension: "dsh-essential-tools" }));
   };
   ws.onmessage = (ev) => {
     let data = ev.data;
@@ -280,9 +302,8 @@ async function doFocusTab(cmd, tabId) {
       chrome.tabs.get(tid, (t) => { const e = chrome.runtime.lastError; (e || !t) ? reject(new Error(e && e.message || "未找到标签页")) : resolve(t); });
     });
     await new Promise((resolve) => { try { chrome.tabs.update(tid, { active: true }, () => resolve()); } catch (e) { resolve(); } });
-    if (tab.windowId != null) {
-      await new Promise((resolve) => { try { chrome.windows.update(tab.windowId, { focused: true, state: "normal" }, () => resolve()); } catch (e) { resolve(); } });
-    }
+    // 保留窗口原有尺寸/最大化状态(不要强制 state:"normal")。
+    await focusWindowPreservingState(tab.windowId);
     return { ok: true, result: { focused: true, tabId: tid, windowId: tab.windowId } };
   } catch (e) {
     return { ok: false, result: { error: String(e && e.message ? e.message : e) } };
@@ -397,17 +418,22 @@ function readWithActivation(tabId, kind, payload) {
   return new Promise((resolve) => {
     chrome.windows.getLastFocused({}, (prevWin) => {
       const prevWindowId = prevWin ? prevWin.id : null;
+      const prevState = prevWin ? prevWin.state : null;
       chrome.tabs.query({ active: true, windowId: prevWindowId }, (prevTabs) => {
         const prevTabId = prevTabs && prevTabs[0] ? prevTabs[0].id : null;
         const restore = () => {
           if (prevTabId != null) { try { chrome.tabs.update(prevTabId, { active: true }, () => {}); } catch (e) {} }
-          if (prevWindowId != null) { try { chrome.windows.update(prevWindowId, { focused: true, state: "normal" }, () => {}); } catch (e) {} }
+          // 还原原窗口焦点,但**保持其原本的最大化/全屏状态**(原实现强制 state:"normal" 会让窗口缩小)。
+          if (prevWindowId != null) {
+            const opts = prevState === "minimized" ? { focused: true, state: "normal" } : { focused: true };
+            try { chrome.windows.update(prevWindowId, opts, () => {}); } catch (e) {}
+          }
         };
         chrome.tabs.get(tabId, (t) => {
           const err = chrome.runtime.lastError;
           if (err || !t) { restore(); resolve("ERR:no-tab"); return; }
           const doActivate = () => new Promise((r) => { try { chrome.tabs.update(tabId, { active: true }, () => r()); } catch (e) { r(); } });
-          const doFocus = () => new Promise((r) => { if (t.windowId != null) { try { chrome.windows.update(t.windowId, { focused: true, state: "normal" }, () => r()); } catch (e) { r(); } } else { r(); } });
+          const doFocus = () => focusWindowPreservingState(t.windowId);
           doActivate().then(doFocus).then(() => {
             setTimeout(() => {
               Promise.resolve(injectScript(tabId, kind, payload, 10000)).then((out) => { restore(); resolve(out); }).catch(() => { restore(); resolve("ERR:inject-failed"); });
@@ -446,12 +472,67 @@ async function doRead(c, cmd, tabId) {
   return { ok: true, result: { text, url, title, truncated: out.length > max } };
 }
 
+/**
+ * 截图**指定标签页**(不抢焦点、不改窗口尺寸)。
+ *
+ * 两个实测坑:
+ *   1) 原实现 `captureVisibleTab(null)` 只截「当前可见窗口的活动页」,与 tabId 无关 →
+ *      调用方被迫先 focus_tab,而那会把最大化的窗口还原(观感:窗口跳前台 + 页面变小)。
+ *   2) `captureVisibleTab(windowId)` 传具体窗口 id 时,**本机 Edge 不回调**(实测 8s 兜底命中)
+ *      → 宿主只能等到 15s 超时。`captureVisibleTab(null)`(截当前聚焦窗口)是实测可用的形式。
+ * 因此流程改为:必要时「在目标页自己的窗口内」激活它 → 必要时临时聚焦该窗口(保留尺寸/最大化状态)
+ * → 用 null 形式截图 → 立刻把活动页与窗口焦点还原。
+ */
 function screenshot(tabId) {
   return new Promise((resolve) => {
-    chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
+    let settled = false;
+    let stage = "init";
+    const guard = setTimeout(() => settle({ ok: false, result: { error: "截图超时(stage=" + stage + ")" } }), 8000);
+    function settle(out) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(guard);
+      resolve(out);
+    }
+    const done = (dataUrl) => {
       const err = chrome.runtime.lastError;
-      if (err) { resolve({ ok: false, result: { error: err.message || "截图失败" } }); return; }
-      resolve({ ok: true, result: { dataUrl } });
+      if (err || !dataUrl) settle({ ok: false, result: { error: (err && err.message) || "截图失败" } });
+      else settle({ ok: true, result: { dataUrl } });
+    };
+    stage = "get-tab";
+    chrome.tabs.get(tabId, (t) => {
+      const e1 = chrome.runtime.lastError;
+      if (e1 || !t) { settle({ ok: false, result: { error: (e1 && e1.message) || "未找到标签页" } }); return; }
+      const targetWin = t.windowId;
+      stage = "get-last-focused";
+      chrome.windows.getLastFocused({}, (prevWin) => {
+        const prevWinId = prevWin && prevWin.id != null ? prevWin.id : null;
+        stage = "query-active";
+        chrome.tabs.query({ active: true, windowId: targetWin }, (prev) => {
+          const prevTabId = prev && prev[0] ? prev[0].id : null;
+          const restore = () => {
+            if (prevTabId != null && prevTabId !== tabId) { try { chrome.tabs.update(prevTabId, { active: true }, () => {}); } catch (e) {} }
+            if (prevWinId != null && prevWinId !== targetWin) focusWindowPreservingState(prevWinId);
+          };
+          const capture = () => {
+            stage = "capture";
+            try { chrome.tabs.captureVisibleTab(null, { format: "png" }, (d) => { done(d); restore(); }); }
+            catch (e) { settle({ ok: false, result: { error: String(e && e.message ? e.message : e) } }); }
+          };
+          const ensureActive = () => {
+            if (t.active) { capture(); return; }
+            stage = "activate";
+            try { chrome.tabs.update(tabId, { active: true }, () => setTimeout(capture, 150)); }
+            catch (e) { settle({ ok: false, result: { error: String(e && e.message ? e.message : e) } }); }
+          };
+          if (prevWinId != null && prevWinId !== targetWin) {
+            stage = "focus-window";
+            focusWindowPreservingState(targetWin).then(ensureActive);
+          } else {
+            ensureActive();
+          }
+        });
+      });
     });
   }).catch((e) => ({ ok: false, result: { error: String(e && e.message ? e.message : e) } }));
 }
@@ -498,6 +579,21 @@ try {
     }
   });
 } catch (e) { /* 忽略:若是打包扩展导致周期受限,不影响手动重连 */ }
+
+// 兜底同步:popup/options 里直接写 chrome.storage.local 时,模块级 mode 不会变,
+// 宿主的 this.mode 也就永远停在旧档(典型症状:用户改了档位,det_browser 仍报 ext-mode-off)。
+// 监听 storage 变更 → 同步本 SW 的 mode + 徽标,并主动把新档位推给宿主。
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes || !changes.dshBrowserMode) return;
+    const raw = changes.dshBrowserMode.newValue;
+    const next = MODES.indexOf(raw) >= 0 ? raw : "off";
+    if (next === mode) return;
+    mode = next;
+    setBadge(mode);
+    notify({ type: "mode", mode });
+  });
+} catch (e) { /* 忽略 */ }
 
 // 供 options/popup 调用的简单 RPC(通过 storage 变更事件也可)。
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
