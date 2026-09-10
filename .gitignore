@@ -23,3 +23,6 @@ Thumbs.db
 # 本地面向维护者/AI 的内部指南(不发布)
 docs/AI_GUIDE.md
 
+# 本地 npm 缓存/日志(发布时用 --cache 指向仓库内,避免写用户缓存)
+.npm-cache/
+

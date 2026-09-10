@@ -57,5 +57,13 @@ gh release upload v2.4.0 --clobber install.ps1; gh release upload v2.4.0 --clobb
 - 本机 DSH 需**重启 + 强刷**加载新版本(若从 npm 重装或发布版)。
 - 已发布不可撤回(公开);若要回滚,`npm dist-tag` 或切 GitHub tag。
 
+## ⚠ npm 发布凭据(2026-09-10 实测)
+- `~/.npmrc` 里的 `//registry.npmjs.org/:_authToken` 已**失效**:`npm whoami` → `E401 Unauthorized`,直接 PUT 发布 → `404 Not found`(npm 对无 publish 权限的凭据回 404)。
+- 该 token 连**已发布包的写权限**都没有;`dsh-essential-tools` 的维护者是 **llylab**,必须用该账号重新登录。
+- 修复:`npm login`(账号 llylab)或到 <https://www.npmjs.com/settings/llylab/tokens> 生成**含 Publish 权限的 Granular Access Token**,写入 `~/.npmrc`:`//registry.npmjs.org/:_authToken=npm_xxx`。
+- 验证:`npm whoami` 应输出 `llylab`;再执行 `npm publish --cache ./.npm-cache`。
+- 包名已存在(npm 上 2.3.3/2.3.4/2.3.5),**不要**改名发布,否则现有用户的 `dsh plugin add dsh-essential-tools` 会装不到新版。
+
 ## 当前状态(最近一次)
-- 已发布 **2.3.5**(npm + GitHub Release)。v2.4.0(浏览器控制)已提交本机(`main` 领先 origin),**未推未发**——扩展需先真机装载验证。
+- **v2.4.1**:GitHub 已发布(`main` = tag `v2.4.1` = `c6d58ba`,Release 含 `install.ps1` / `README.md` / `GUIDE.md` 资产)。
+- **npm 未发布**:受限于上节凭据问题;待重新登录后 `npm publish` 即可补齐(npm 上最新仍为 2.3.5)。
