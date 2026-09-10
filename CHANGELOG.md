@@ -10,6 +10,7 @@
 - **修复**：inventory 行的 `packages` 可能缺失（不同 DSH 版本），复用动态插件时加容错，避免 TypeError；GitHub 商店搜索结果的 `name` / `verificationStatus` 归一化，否则模型工具的 output schema 会拿到 `undefined` 被判为非法 JSON。
 - **余额刷新更跟手**：TTL 8s → 4s，配合前端 5s 轮询。
 - **文档**：重写 `README.md`（价值主张 / 亮点 / 快速开始 / 文档索引），新增面向使用者的 **[docs/GUIDE.md](docs/GUIDE.md) 用户指导手册**（安装、上手、逐功能详解、权限模型、扩展装载、FAQ、故障排查、卸载回滚、速查表）。
+- **发布**：GitHub `main` = tag `v2.4.1`（Release 资产 `install.ps1` / `README.md` / `GUIDE.md`）+ npm `dsh-essential-tools@2.4.1`（latest）。新增 `publish-otp.ps1`（非交互环境用 OTP 一次完成发布 + 校验）。
 
 ## v2.4.0 — 浏览器控制(DET → 你已登录的浏览器,扩展方案)
 

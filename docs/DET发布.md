@@ -57,13 +57,18 @@ gh release upload v2.4.0 --clobber install.ps1; gh release upload v2.4.0 --clobb
 - 本机 DSH 需**重启 + 强刷**加载新版本(若从 npm 重装或发布版)。
 - 已发布不可撤回(公开);若要回滚,`npm dist-tag` 或切 GitHub tag。
 
-## ⚠ npm 发布凭据(2026-09-10 实测)
-- `~/.npmrc` 里的 `//registry.npmjs.org/:_authToken` 已**失效**:`npm whoami` → `E401 Unauthorized`,直接 PUT 发布 → `404 Not found`(npm 对无 publish 权限的凭据回 404)。
-- 该 token 连**已发布包的写权限**都没有;`dsh-essential-tools` 的维护者是 **llylab**,必须用该账号重新登录。
-- 修复:`npm login`(账号 llylab)或到 <https://www.npmjs.com/settings/llylab/tokens> 生成**含 Publish 权限的 Granular Access Token**,写入 `~/.npmrc`:`//registry.npmjs.org/:_authToken=npm_xxx`。
-- 验证:`npm whoami` 应输出 `llylab`;再执行 `npm publish --cache ./.npm-cache`。
+## ⚠ npm 发布凭据(2026-09-10 实测,已解决)
+- 现象:`~/.npmrc` 里的旧 token 已失效 —— `npm whoami` → `E401`,直接 PUT 发布 → `404 Not found`(npm 对无 publish 权限的凭据回 404);换成新 token 后仍被 `EOTP` 拦(该账号开了 2FA)。
+- 结论:**必须用 llylab 账号的凭据,且该凭据要能免 OTP**。两条可行路径:
+  1. 交互式终端里 `npm publish`(npm 会走网页认证分支,浏览器点一下即可);
+  2. **Automation token(Bypass 2FA)**:<https://www.npmjs.com/settings/llylab/tokens> → Generate New Token → Classic/Automation,或 Granular 勾 Publish + Bypass 2FA;写进 `~/.npmrc`:
+     ```
+     //registry.npmjs.org/:_authToken=npm_xxx
+     ```
+- 验证:`npm whoami` 应输出 `llylab`;再 `npm publish --cache ./.npm-cache`。
+- 备用:非交互环境下要临时输码,用 `.\publish-otp.ps1 -Otp 123456`(把「读码→发布→校验」压进一次执行,减少码过期概率)。
 - 包名已存在(npm 上 2.3.3/2.3.4/2.3.5),**不要**改名发布,否则现有用户的 `dsh plugin add dsh-essential-tools` 会装不到新版。
 
 ## 当前状态(最近一次)
-- **v2.4.1**:GitHub 已发布(`main` = tag `v2.4.1` = `c6d58ba`,Release 含 `install.ps1` / `README.md` / `GUIDE.md` 资产)。
-- **npm 未发布**:受限于上节凭据问题;待重新登录后 `npm publish` 即可补齐(npm 上最新仍为 2.3.5)。
+- **v2.4.1 已完整发布**:GitHub(`main` = tag `v2.4.1` = `ba23561`,Release 含 `install.ps1` / `README.md` / `GUIDE.md` 资产)+ **npm `dsh-essential-tools@2.4.1`(dist-tag latest)**。
+- 用户升级:`dsh plugin --profile web add dsh-essential-tools`(或 `.\install.ps1 -Profile web`),然后**重启 DSH + 强刷**。浏览器扩展仍需从仓库 `browser-extension/` 本机装载。
