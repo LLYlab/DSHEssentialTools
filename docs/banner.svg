@@ -49,10 +49,17 @@
   </g>
 
   <!-- title -->
-  <text x="232" y="150" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="46" font-weight="700" letter-spacing="0.5" fill="#EAF2FF">DSHEssentialTools</text>
-  <rect x="234" y="170" width="430" height="4" rx="2" fill="url(#accent)"/>
+  <text x="232" y="146" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="46" font-weight="700" letter-spacing="0.5" fill="#EAF2FF">DSHEssentialTools</text>
+  <rect x="234" y="164" width="430" height="4" rx="2" fill="url(#accent)"/>
 
   <!-- tagline -->
-  <text x="234" y="216" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="21" fill="#9FB4D8">Permanent DeepSeek Harness Plugin</text>
-  <text x="234" y="247" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="15" fill="#7F95BD" letter-spacing="1.2">VTD CONVERSATION TREE · VERSION MANAGEMENT · DET MANAGER</text>
+  <text x="234" y="208" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="21" fill="#AFC4E6">The permanent DeepSeek Harness plugin — DET</text>
+  <text x="234" y="240" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="15" fill="#8AA0C8" letter-spacing="0.6">Drive your own logged-in browser · Branch any conversation · Snapshot and roll back real projects</text>
+  <text x="234" y="268" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="13" fill="#6F86AF" letter-spacing="1.6">BROWSER CONTROL · VTD CONVERSATION TREE · PLUGIN MANAGER · TOKEN COST · SECURITY AUDIT</text>
+
+  <!-- corner badge -->
+  <g>
+    <rect x="1120" y="40" width="112" height="30" rx="15" fill="#ffffff" fill-opacity="0.07" stroke="#ffffff" stroke-opacity="0.16"/>
+    <text x="1176" y="60" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif" font-size="14" font-weight="600" fill="#BBD2F5">v2.4.1</text>
+  </g>
 </svg>
