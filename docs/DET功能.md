@@ -49,7 +49,9 @@
 
 > 快捷键：**Esc** 关闭任意已打开面板。
 >
-> **总开关（`det.features.master`，默认开）**：关闭时上表除「DET 管理器」外全部不注册，同时宿主侧卸下全部 `det_*` / `web_*` 工具、系统提示注入、安全审计监听、浏览器桥与会话登记自检 —— DET 对 DSH 的改动只剩设置页里的这个开关。
+> **总开关（`det.features.master`，默认开）**：关闭时上表除「DET 管理器」外全部不注册，同时宿主侧卸下全部 `det_*` / `web_*` 工具、系统提示注入、安全审计监听、浏览器桥与会话登记自检，并**一并停用 DET 管控的插件**（全局插件库里当时开着的常驻/会话插件;快照 `det.master.paused`,重新打开自动恢复,关闭态页面会列出被停用清单）—— DET 对 DSH 的改动只剩设置页里的这个开关。
+>
+> **全局插件管理的指示 = 实际**：常驻插件按宿主 loader 的 `entry.disabled` 显示（记录不一致时自动回写纠正并标注,附 `fiber` 阶段）；会话状态区分「运行中 / 已启用记录·未运行 / 未打开·打开后恢复」。端点 `gpList` 返回 `globallyEnabled`(已按实际)、`actualEnabled`、`fiberPhase`、`stateMismatch`、`sessions[sid].{running,recordEnabled,stale}`；`gpMasterState` 返回总开关与被停用插件清单。
 
 ---
 

@@ -70,8 +70,9 @@ gh release upload v2.4.0 --clobber install.ps1; gh release upload v2.4.0 --clobb
 - 包名已存在(npm 上 2.3.3/2.3.4/2.3.5),**不要**改名发布,否则现有用户的 `dsh plugin add dsh-essential-tools` 会装不到新版。
 
 ## 当前状态(最近一次)
-- **v2.5.0 已完整发布**:GitHub(`main` = tag `v2.5.0` = `d69454d`,Release 含 `install.ps1` / `README.md` 资产)+ **npm `dsh-essential-tools@2.5.0`(dist-tag latest)**。本版含**总开关**(`det.features.master`,关闭即「完全原生」:只留 DET 管理器与总开关)与 0.1.5 适配(`lib/host.js` 能力层 + `lib/vtd/index.js`)。
-- 上一版 **v2.4.1**:GitHub tag `v2.4.1` = `ba23561` + npm `dsh-essential-tools@2.4.1`。
+- **v2.5.1 已完整发布**:npm `dsh-essential-tools@2.5.1`(dist-tag latest)+ GitHub tag `v2.5.1`(Release 资产 `install.ps1` / `README.md`)。本版补齐总开关语义(**关闭时一并停用 DET 管控的插件**,快照恢复)并让**全局插件管理的指示 = 实际状态**(常驻按 loader 核对并回写、会话区分「记录」与「在跑」);另修掉登记簿自检的 `id=""` 幽灵会话。
+- 上一版 **v2.5.0**:总开关(`det.features.master`,关闭即「完全原生」)+ 0.1.5 适配(`lib/host.js` 能力层 + `lib/vtd/index.js`);GitHub tag `v2.5.0` = `d69454d`。
+- 再上一版 **v2.4.1**:GitHub tag `v2.4.1` = `ba23561` + npm `dsh-essential-tools@2.4.1`。
 - 用户升级:`dsh plugin --profile web add dsh-essential-tools`(或 `.\install.ps1 -Profile web`),然后**重启 DSH + 强刷**。浏览器扩展仍需从仓库 `browser-extension/` 本机装载。
 
 ## ⚠ 脚本编码(2026-09-12 实测)

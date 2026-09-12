@@ -40,8 +40,15 @@ Write-Host "目标版本: $Version" -ForegroundColor Yellow
 
 if (-not $DryRun) {
   if (-not $NoBump) {
-    Run-Step "提升版本号为 $Version"
-    RunCmd "npm version $Version --no-git-tag-version"
+    # package.json 已是目标版本时别调 npm version(它会以 "Version not changed" 退出 1),
+    # 否则「先改好 package.json 再发布」这条最自然的路径会被脚本自己拦下。
+    $current = (node -p "require('./package.json').version")
+    if ($current -eq $Version) {
+      Write-Host "   package.json 已是 $Version,跳过升版本" -ForegroundColor DarkGray
+    } else {
+      Run-Step "提升版本号为 $Version"
+      RunCmd "npm version $Version --no-git-tag-version"
+    }
   }
 }else{ Write-Host "[dry-run] 不修改版本" }
 
