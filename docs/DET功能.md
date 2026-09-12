@@ -20,7 +20,7 @@
 | MDA 分层 / 模型合作 | ✓ | `mda_list_areas` / `mda_card` / `mda_activate` / `mda_create_no_workspace_agent` |
 | 安全审计 | ✗（仅 GUI） | 工具栏 🛡 + 设置页 |
 | 余额 / 单价 / 本对话花费 | ✗（仅 GUI） | 右下角状态框 |
-| DET 管理器（功能开关） | ✗（仅 GUI） | 设置 → DET 管理器 |
+| DET 管理器（总开关 + 功能开关） | ✗（仅 GUI） | 设置 → DET 管理器 |
 
 ---
 
@@ -43,11 +43,13 @@
 | 网络权限内联 | `conversation.input.left` | 5 档下拉 |
 | VTD 对话树 | `conversation.view` | 完整树视图 + 生成中流式刷新 |
 | 消息操作条 | `conversation.chat.user-actions` | 编辑 / 重试 / `<N>` 分叉选择 |
-| DET 管理器 | `settings.section` | 功能装载/卸载 + 自检/调试 |
-| 全局插件管理 | `settings.section` | 五档控制 / 会话启停 / 代码预览 / 商店 |
-| MDA 分组 | `settings.section` | 分组模式 + 分组树 |
+| DET 管理器 | `settings.section` | **总开关（完全原生 ↔ 扩展）** + 功能装载/卸载 + 自检/调试 |
+| 全局插件管理 | `settings.section` | 五档控制 / 会话启停 / 代码预览 / 商店（总开关关闭时不注册） |
+| MDA 分组 | `settings.section` | 分组模式 + 分组树（总开关关闭时不注册） |
 
 > 快捷键：**Esc** 关闭任意已打开面板。
+>
+> **总开关（`det.features.master`，默认开）**：关闭时上表除「DET 管理器」外全部不注册，同时宿主侧卸下全部 `det_*` / `web_*` 工具、系统提示注入、安全审计监听、浏览器桥与会话登记自检 —— DET 对 DSH 的改动只剩设置页里的这个开关。
 
 ---
 

@@ -60,6 +60,6 @@
   <!-- corner badge -->
   <g>
     <rect x="1120" y="40" width="112" height="30" rx="15" fill="#ffffff" fill-opacity="0.07" stroke="#ffffff" stroke-opacity="0.16"/>
-    <text x="1176" y="60" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif" font-size="14" font-weight="600" fill="#BBD2F5">v2.4.1</text>
+    <text x="1176" y="60" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif" font-size="14" font-weight="600" fill="#BBD2F5">v2.5.0</text>
   </g>
 </svg>

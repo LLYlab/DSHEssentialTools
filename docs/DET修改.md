@@ -83,6 +83,15 @@ tools.register(tool);
 3. 客户端：模块级 `detFeatures` 默认值 + `DetManagerSection` 的 `toggleRow` 各加一行。
 4. 需要运行时装载/卸载：挂进 `setDet` 的副作用（`_syncDetRuntimeFeatures` 是范例）。
 
+> **总开关（`master`）是这些分项之上的总闸**，不是普通开关：
+> - 宿主：`_syncMasterFeatures()`（读持久化开关）→ `_loadExtension()` / `_unloadExtension()`；
+>   所有扩展注册都必须登记 disposer 并**由 `_loadExtension` 统一 push 进 `_extDisposers`**
+>   （三个 `register*` 函数内部用 `const reg = (t) => dis.push(tools.register(t))` 收集），
+>   否则总开关关闭时会残留。新的运行时副作用同样要在 `_syncDetRuntimeFeatures` 里带 `masterOn` 判断。
+> - 客户端：任何界面注入都要经 `extReg(key, register)` 登记（`wireExtension()` 里统一装配），
+>   定时器/订阅放进 `startRuntime()` 的 `runtimeStops`；`setDet` 会调用 `masterWiring()` 按总开关装卸。
+> - 加了新的注入点却忘了登记，就等于「总开关关不干净」——这是该功能唯一的红线。
+
 ---
 
 ## 5. 加 UI

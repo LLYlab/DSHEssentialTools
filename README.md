@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/DeepSeek%20Harness-0.1.1--rc.2%2B-blue?style=flat-square" alt="DSH">
   <img src="https://img.shields.io/badge/type-permanent%20plugin-8c9eff?style=flat-square" alt="type">
-  <img src="https://img.shields.io/badge/version-2.4.1-8c9eff?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/version-2.5.0-8c9eff?style=flat-square" alt="version">
   <img src="https://img.shields.io/badge/tools-25%20model%20tools-7c4dff?style=flat-square" alt="tools">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Edge%20%2F%20Chrome-F7DF1E?style=flat-square" alt="platform">
 </p>
@@ -117,8 +117,12 @@ MSBuild missing or misconfigured? **Auto-discovery**: `vswhere` → common VS in
   | 静默浏览器仿真 | `silent` | headless browser simulation (read pages) |
   | 使用用户浏览器 | `browser` | **drives your real browser** (`det_browser` needs exactly this) |
 
-### 🎛 Almost completely optional
-DET manager in Settings has per-feature switches (files / run / versions / VTD / plugin manager / MDA). Turn **plugin manager** off and all global plugins are disabled; turn **MDA** off and grouping returns to native — i.e. DET can fade back to a stock DSH in two clicks, while staying reachable.
+### 🎛 Master switch — stock DSH in one click
+**Settings → DET 管理器** opens with a **master switch** (`det.features.master`, **on** by default) above the per-feature switches.
+
+- **Off = fully native.** DET keeps exactly two things: this manager page and the switch itself. Everything else is unloaded — the ▶🗎🕘🧩🛡 toolbar, the corner balance/cost/MMS card, the network-permission control, the VTD tab and message actions, the MDA sidebar overlay, the *Global plugins* and *MDA* settings entries, all `det_*` / `web_*` model tools and system-prompt injections, the security-audit hook, the local browser bridge, and the sidebar-registry self-check. MDA grouping resets to `native`.
+- **On** restores all of it (per-feature switches keep their saved values). The switch applies instantly and is persisted — no restart, and turning it off is reversible because every registration is held as a disposer.
+- With the master switch on, the per-feature switches still work as before: turn **plugin manager** off and all global plugins are disabled; turn **MDA** off and grouping returns to native.
 
 ---
 
