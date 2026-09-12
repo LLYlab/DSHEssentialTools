@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/DeepSeek%20Harness-0.1.1--rc.2%2B-blue?style=flat-square" alt="DSH">
   <img src="https://img.shields.io/badge/type-permanent%20plugin-8c9eff?style=flat-square" alt="type">
-  <img src="https://img.shields.io/badge/version-2.5.1-8c9eff?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/version-2.5.2-8c9eff?style=flat-square" alt="version">
   <img src="https://img.shields.io/badge/tools-25%20model%20tools-7c4dff?style=flat-square" alt="tools">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Edge%20%2F%20Chrome-F7DF1E?style=flat-square" alt="platform">
 </p>
@@ -121,7 +121,7 @@ MSBuild missing or misconfigured? **Auto-discovery**: `vswhere` → common VS in
 **Settings → DET 管理器** opens with a **master switch** (`det.features.master`, **on** by default) above the per-feature switches.
 
 - **Off = fully native.** DET keeps exactly two things: this manager page and the switch itself. Everything else is unloaded — the ▶🗎🕘🧩🛡 toolbar, the corner balance/cost/MMS card, the network-permission control, the VTD tab and message actions, the MDA sidebar overlay, the *Global plugins* and *MDA* settings entries, all `det_*` / `web_*` model tools and system-prompt injections, the security-audit hook, the local browser bridge, and the sidebar-registry self-check. MDA grouping resets to `native`.
-- **DET-managed plugins are stopped too.** Anything in the global-plugin library that was actually running (`dbs`, `topo`, …) is unloaded as well: resident plugins are hot-unloaded through the loader, dynamic ones have their per-session instances stopped. Which ones were stopped is written to a snapshot (`det.master.paused`) and shown on the manager page, so *fully native* is verifiable rather than assumed.
+- **DET-managed plugins are stopped too.** Everything inside DET's management scope is unloaded: library plugins that were actually on (`dbs`, …) **and** third-party resident plugins DET can see in *installed plugins* even if they were never imported into the library (`topo`, loader `include:topo`). Resident plugins are hot-unloaded through the loader; dynamic ones have their per-session instances stopped. Which ones were stopped is written to a snapshot (`det.master.paused`) and shown on the manager page, so *fully native* is verifiable rather than assumed. Framework packages (`@deepseek-ai/*`) and DET itself are never touched.
 - **On** restores all of it — including re-loading the plugins the master switch stopped (resident plugins re-mount, session enable-records are restored so `gpSync` brings them back). Per-feature switches keep their saved values. The switch applies instantly and is persisted — no restart, and turning it off is reversible because every registration is held as a disposer.
 - With the master switch on, the per-feature switches still work as before: turn **plugin manager** off and all global plugins are disabled; turn **MDA** off and grouping returns to native.
 
