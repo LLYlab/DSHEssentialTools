@@ -52,6 +52,12 @@ gh release upload v2.4.0 --clobber install.ps1; gh release upload v2.4.0 --clobb
 2. `node --input-type=module -e "await import('file:///.../lib/index.js')"`(模块能加载,顶层/方法无引用错误)。
 3. 客户端 bundle(`lib/client.js`)能完整执行(factory 冒烟)。
 4. 扩展文件 `manifest.json` 可 `JSON.parse`;`background.js`/`options.js`/`popup.js` 可 `node --check`。
+5. **回归测试**(用假 loader / 假存储驱动真实方法,不需要起 DSH):
+   ```powershell
+   cd C:\Users\L2959\.dsh\profiles\web
+   node C:\Users\L2959\.dsh\profiles\node_modules\dsh-essential-tools\tests\pause.test.mjs
+   ```
+   覆盖:总开关的停用清单(容器不入列、不在库里的常驻插件如 `dlt` 永不被动)、停用后核对与如实上报、旧快照恢复不碰容器。
 
 ## 发布后
 - 本机 DSH 需**重启 + 强刷**加载新版本(若从 npm 重装或发布版)。
@@ -70,7 +76,8 @@ gh release upload v2.4.0 --clobber install.ps1; gh release upload v2.4.0 --clobb
 - 包名已存在(npm 上 2.3.3/2.3.4/2.3.5),**不要**改名发布,否则现有用户的 `dsh plugin add dsh-essential-tools` 会装不到新版。
 
 ## 当前状态(最近一次)
-- **v2.5.2 已完整发布**:npm `dsh-essential-tools@2.5.2`(dist-tag latest)+ GitHub tag `v2.5.2`(Release 资产 `install.ps1` / `README.md`)。本版把总开关的停用范围补全到**库外常驻插件**(随 DSH 常驻装载、未纳入库的 `topo` 这类);上一版(v2.5.1)补齐了「总开关关闭时停用 DET 管控插件」与「指示状态 = 实际状态」(常驻按 loader 核对并回写、会话区分「记录」与「在跑」),并修掉登记簿自检的 `id=""` 幽灵会话。
+- **v2.6.0**:把总开关的停用范围从「盲扫 loader 里所有非框架常驻插件」**收窄到「DET 全局插件库」**—— 修掉两个实测事故:误停容器 `cordis:include`(它持有整份 `cordis.yml` 子树,停它导致 dbs/topo 被拆了又按配置重建,表现为「关了 DET 却没关干净」),以及误停**不属于 DET 的 `dlt`**;同时把「停没停」改成**回读 loader 核对**(没停的补一次、仍不行就如实标「未能停用 + 原因」),库里绑定不上的记录单列 `det.master.unmanaged`,并修掉「纳入会清空记录原有 host/client 代码」。新增回归测试 `tests/pause.test.mjs`。
+- **v2.5.2 已完整发布**:npm `dsh-essential-tools@2.5.2`(dist-tag latest)+ GitHub tag `v2.5.2`(Release 资产 `install.ps1` / `README.md`)。该版把总开关的停用范围补全到**库外常驻插件**(随 DSH 常驻装载、未纳入库的 `topo` 这类)—— 该做法已在 v2.6.0 被收窄(见上)。
 - 再上一版 **v2.5.0**:总开关(`det.features.master`,关闭即「完全原生」)+ 0.1.5 适配(`lib/host.js` 能力层 + `lib/vtd/index.js`);GitHub tag `v2.5.0` = `d69454d`。
 - 更早 **v2.4.1**:GitHub tag `v2.4.1` = `ba23561` + npm `dsh-essential-tools@2.4.1`。
 - 用户升级:`dsh plugin --profile web add dsh-essential-tools`(或 `.\install.ps1 -Profile web`),然后**重启 DSH + 强刷**。浏览器扩展仍需从仓库 `browser-extension/` 本机装载。

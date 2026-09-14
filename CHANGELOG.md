@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.6.0 — 停用范围收窄到「DET 全局插件库」;DLT 这类插件不再被误伤
+
+> v2.5.2 为了让 `topo` 也能被停用,把范围扩大成「loader 里所有非框架、非 DET 自身的常驻插件」。这个**盲扫**踩了两个坑:①`cordis:include` —— 它是持有整份 `cordis.yml` 子树的**容器**(`dbs`/`dlt`/`topo` 的 loader id 都是它的孩子 `include:xxx`),停它等于去拆整棵 profile 插件树,include 那侧随后按配置重建孩子,刚停掉的插件又被拉起来 —— 实测就是「关了 DET,dbs / topo 照旧在跑」;②把**不属于 DET 的插件**(如 `dlt` —— 它有自己的「DLT 管理器」总开关)也一起停了。本版把范围收回到 DET 自己的库,并把「停没停」变成可核对的事实。
+
+### 停用范围 = DET 全局插件库(不再盲扫 loader)
+- 只遍历 `global.list()`(即「全局插件管理」里那份库)。**不在库里的常驻插件(如 `dlt`)永不碰** —— 它们各有自己的开关。
+- 库里一条记录要能被停,必须**绑定到 loader 条目**(记录里有 `moduleName`,由「全局插件管理 → 扫描已安装插件 → 纳入」写入)。
+- **容器/内置永不入列**:拥有子树(`entry.subtree`)或名字以 `cordis:` 开头的条目(如 `cordis:include`)在停用与恢复两条路径上都被跳过 —— 既修掉「停不干净」,也排除拆整棵插件树的风险。
+- 库里声称常驻、但绑定不上的记录,不再靠猜名字去停别人的插件:写进 `det.master.unmanaged`,设置页如实列「没被停用 + 原因(去『纳入』绑定)」。`gpMasterState` 新增 `unmanaged` / `unmanagedCount`。
+
+### 停用后核对,不再「写下就算停」
+- `_verifyPause`:逐条回读 loader 的**真实**状态(`entry.disabled`),没停的补一次(250ms 后重试),仍没停就记 `applied: false` + 可读原因。快照 `det.master.paused` 现在带 `applied`,页面区分「已确认停用 N / ⚠ 未能停用 M(+原因)」,并提供一键**刷新页面** —— 入口被停用后该插件的 client 包不再下发,刷新即彻底干净。
+- 恢复侧同样只认快照:`_resumeManagedPlugins` 跳过旧快照里残留的容器条目(`skipped`),不会去替 loader 开关容器。
+
+### 修复
+- `global.upsert`:「纳入」(code 传空)不再用空值覆盖库里记录原有的 `host` / `client` 动态代码。
+- `_pauseItemState`:只要记录绑定了 loader 条目就以 loader 为准 —— 此前非 `permanent` 的绑定记录会被错判成「会话实例已停」。
+
+### 测试
+- 新增 `tests/pause.test.mjs`(假 loader / 假存储驱动**真实**方法,10 条):容器不入列、**DLT 全程不被 update**、绑定不上的进 unmanaged、停不下来的补刀并如实上报、旧快照恢复不碰容器。跑法见 `docs/DET发布.md`。
+
 ## v2.5.2 — 总开关的停用范围补全:随 DSH 常驻、但未纳入库的插件(dbs / topo)
 
 > 2.5.1 的总开关只停了「全局插件库里有记录」的插件。本机实测发现:真正在跑的 `topo` 是**随 DSH 常驻装载、未纳入库**的插件(loader 里是 `include:topo`),库中只有一个动态副本 `gp-topo` —— 于是关掉总开关后 `topo` 仍在跑(`topo_ds_ask` 仍可用)。本版把这类插件也纳入停用范围。
