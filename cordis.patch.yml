@@ -1,0 +1,29 @@
+# DET (dsh-essential-tools) — profile bundle patch.
+#
+# 由 package.json 的 `dsh.bundle.patch` 指向，安装时并入当前 profile 的 bundle 层
+# （`dsh plugin --profile web add dsh-essential-tools` 或
+#  `dsh plugin --profile web add github:LLYlab/DSHEssentialTools`）。
+# loader entry 的 `name` 必须等于 npm 包名，否则 DSH 解析不到入口。
+#
+# 这里**故意不写 config**：Config schema 里每一项都有中性默认值
+# （路径为空串、configuration=Debug、platform=x64、bootFailLimit=2），
+# 所以从一个干净的 profile 装上去就能直接启动，不会带入任何个人/机器路径。
+# 只有「▶ 运行 / 🗎 文件 / 🕘 版本」这几个面向工程的工具才需要工程路径。
+#
+# 要接自己的工程，在**自己的** patch 层里按 id 覆盖（注意 config 是**整块替换**，
+# 不是逐字段深合并 —— 想继续生效的键必须一起写上）：
+#
+#   - id: dsh-essential-tools
+#     config:
+#       lvalRoot: 'C:\path\to\project'
+#       srcDir: 'C:\path\to\project\src'
+#       solution: 'C:\path\to\project\App.slnx'
+#       msbuild: 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe'
+#       configuration: 'Debug'
+#       platform: 'x64'
+#       bootFailLimit: 2
+#
+# 不要对同一个 profile 再 `insert` 一个同名行，否则是重复的 Bundle ID。
+- insert:
+    - id: dsh-essential-tools
+      name: 'dsh-essential-tools'

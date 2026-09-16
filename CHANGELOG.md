@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.7.0 — 可安装的 bundle(manifest 完整化)
+
+- **新增 `dsh.bundle.patch`**:`package.json` 的 `dsh` 节除 `client` 外,现在声明 `bundle.patch → ./cordis.patch.yml`,并在仓库根补上了对应的 `cordis.patch.yml`。在此之前 DET 只声明 `dsh.client`,而**单有 `dsh.client` 并不构成可安装的 bundle**:`dsh plugin add` 装不上,各插件收录库的静态校验会直接判 `invalid` —— 中心 Registry 的 `rejected.json` 里 DET 的理由正是 `package.json does not declare a safe dsh.bundle.patch`。
+- **一条命令安装**:`dsh plugin --profile web add dsh-essential-tools` 或 `dsh plugin --profile web add github:LLYlab/DSHEssentialTools`。装完自动并入当前 profile 的 bundle 层,**不再需要手工往 `cordis.patch.yml` 里插 `insert` 块**(从源码挂载仍然可以那样做)。
+- `cordis.patch.yml` **故意不写 `config`**:所有键都有中性默认值(路径为空串 / Debug / x64 / bootFailLimit=2),所以干净 profile 装上去就能直接启动,不带入任何个人或机器路径;要接自己的工程,在自己的 patch 层里按 `id` 覆盖(`config` 是整块替换,不是逐字段深合并)。
+- **README**:Quick start 增加 Option C(GitHub 安装),并说明 bundle patch 会自动注册。
+- **功能无变化**:未改动任何 `lib/` 代码,本次是打包／安装契约的修复。
+
 ## v2.6.0 — 停用范围收窄到「DET 全局插件库」;DLT 这类插件不再被误伤
 
 > v2.5.2 为了让 `topo` 也能被停用,把范围扩大成「loader 里所有非框架、非 DET 自身的常驻插件」。这个**盲扫**踩了两个坑:①`cordis:include` —— 它是持有整份 `cordis.yml` 子树的**容器**(`dbs`/`dlt`/`topo` 的 loader id 都是它的孩子 `include:xxx`),停它等于去拆整棵 profile 插件树,include 那侧随后按配置重建孩子,刚停掉的插件又被拉起来 —— 实测就是「关了 DET,dbs / topo 照旧在跑」;②把**不属于 DET 的插件**(如 `dlt` —— 它有自己的「DLT 管理器」总开关)也一起停了。本版把范围收回到 DET 自己的库,并把「停没停」变成可核对的事实。

@@ -143,9 +143,17 @@ The **Global plugins** list never guesses:
 
 # Option B — manual, exactly equivalent
 dsh plugin --profile web add dsh-essential-tools
+
+# Option C — straight from GitHub (no npm needed)
+dsh plugin --profile web add github:LLYlab/DSHEssentialTools
 ```
 
 Then restart DSH. `dsh-essential-tools` appears under **Settings → Plugin inventory**, with its own **DET 管理器** section.
+
+> The package declares **`dsh.bundle.patch`** (→ [`cordis.patch.yml`](./cordis.patch.yml)), so
+> any of the three commands above registers the plugin in the profile's bundle layer by itself —
+> **you do not need to hand-edit `cordis.patch.yml`**. The manual `insert` below is only for
+> mounting straight from a source checkout.
 
 <details>
 <summary>Registering by hand / adding project paths / config reference</summary>
