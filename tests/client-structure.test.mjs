@@ -172,6 +172,46 @@ for (const cls of [".dset-feat-group-title", ".dset-feat-group-desc"]) {
 }
 
 // ─────────────────────────────────────────────────────────────
+section("架构守卫 —— 客户端服务名同样收敛到表（bundle 不能相对导入）");
+
+const rawClientGets = [...clientSrc.matchAll(/ctx\.get\(\s*"/g)].length;
+eq(rawClientGets, 0, `lib/client.js 不得再出现裸的 ctx.get("字面量")（发现 ${rawClientGets} 处）`);
+
+const svcAt = clientSrc.indexOf("var CLIENT_SERVICE = {");
+ok(svcAt > 0, "存在 CLIENT_SERVICE 服务名表");
+const svcSrc = svcAt > 0 ? clientSrc.slice(svcAt, clientSrc.indexOf("};", svcAt)) : "";
+const svcPairs = [...svcSrc.matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*:\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]);
+ok(svcPairs.length > 0, "CLIENT_SERVICE 非空");
+const svcMismatch = svcPairs.filter(([k, v]) => k !== v);
+eq(svcMismatch.length, 0, `服务名表的 key 应与值同名（避免同一服务两种叫法）：${svcMismatch.map((p) => p.join("=")).join(", ") || "无"}`);
+for (const [k] of svcPairs) {
+  ok(clientSrc.indexOf("CLIENT_SERVICE." + k) !== -1, `服务 ${k} 在表里就必须真被引用（CLIENT_SERVICE.${k}）`);
+}
+
+const injAt = clientSrc.indexOf("var CLIENT_INJECT = ");
+ok(injAt > 0, "存在 CLIENT_INJECT 硬依赖声明");
+const injSrc = injAt > 0 ? clientSrc.slice(injAt, clientSrc.indexOf("];", injAt)) : "";
+const injItems = [...injSrc.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+ok(injItems.length > 0, "CLIENT_INJECT 非空");
+ok(injItems.every((s) => s.trim() !== ""), "CLIENT_INJECT 元素均为非空字符串");
+eq(new Set(injItems).size, injItems.length, "CLIENT_INJECT 无重复");
+
+// exports.inject 必须引用该表,而不是又写一份字面量数组
+ok(clientSrc.indexOf("exports.inject = CLIENT_INJECT;") !== -1, "exports.inject 必须来自 CLIENT_INJECT 表");
+eq([...clientSrc.matchAll(/exports\.inject\s*=\s*\[/g)].length, 0, "不得再写 exports.inject = [字面量数组]");
+
+// 双向不变量:直接以 ctx.<name> 访问的**服务**,必须都在 inject 里声明。
+// Cordis 上下文自身的 API(不是服务)要排除,否则会误报。
+const CTX_API = ["get", "effect", "on", "set", "inject", "logger", "emit", "parallel", "waterfall", "bail", "mixin", "provide"];
+const directNames = [...new Set([...clientSrc.matchAll(/\bctx\.([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]))]
+  .filter((n) => CTX_API.indexOf(n) === -1);
+const undeclared = directNames.filter((n) => injItems.indexOf(n) === -1);
+eq(undeclared.length, 0, `直接访问 ctx.<name> 的服务必须在 CLIENT_INJECT 中声明：${undeclared.join(", ") || "无"}`);
+const unusedInject = injItems.filter((n) => directNames.indexOf(n) === -1);
+eq(unusedInject.length, 0, `声明了却没用到的注入服务（inject 与实际使用不一致）：${unusedInject.join(", ") || "无"}`);
+notes.push(`客户端：ctx.get 服务 ${svcPairs.length} 个（${svcPairs.map((p) => p[0]).join("/")}）· inject ${injItems.join("/")} · 直接访问 ctx.<name> ${directNames.length} 个`);
+
+// ─────────────────────────────────────────────────────────────
 section("结果");
 for (const n of notes) console.log("   · " + n);
 if (failures.length === 0) {
