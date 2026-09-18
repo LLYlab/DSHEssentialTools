@@ -10,9 +10,10 @@ DET 有 8400+ 行、16 项能力、**76 个 typert 端点**。历史教训（见
 
 ```powershell
 cd <repo>
-node tests\unit.test.mjs     # 纯函数 + Config 校验            —— 128 项断言
-node tests\host.test.mjs     # 真装载宿主半区（假 Cordis ctx） —— 60 项断言
-node tests\adapt.test.mjs    # 服务接入层 + 架构守卫           —— 23 项断言
+node tests\unit.test.mjs              # 纯函数 + Config 校验            —— 128 项断言
+node tests\host.test.mjs              # 真装载宿主半区（假 Cordis ctx） —— 60 项断言
+node tests\adapt.test.mjs             # 服务接入层 + 架构守卫           —— 23 项断言
+node tests\client-structure.test.mjs  # 客户端信息架构 + 原生视觉       —— 29 项断言
 ```
 
 必须在**插件包内**运行：ESM 按导入方的 realpath 解析裸包名
@@ -52,6 +53,21 @@ node tests\adapt.test.mjs    # 服务接入层 + 架构守卫           —— 2
 > 服务名从此唯一归属 `lib/adapt.js` 的 `SERVICE` 表：宿主改名只改一处，
 > 架构守卫会在下次跑测试时拦住任何"又写回字面量"的改动。
 
+### `client-structure.test.mjs` —— 客户端信息架构 + 原生视觉
+`lib/client.js` 是浏览器 bundle（靠宿主提供的 `require("react")`，**无 ESM 相对导入**），
+无法直接 import，因此改为**源码扫描**：
+
+| 组 | 覆盖 |
+|---|---|
+| 可解析性 | `new Function(src)` 编译整个 bundle（等价于对该文件跑一次 `node --check`）；确认走 `require("react")` |
+| 分组表 | 能配平截取 `DET_FEATURE_GROUPS`；分组 id 唯一非空、每组有 title/desc、每个开关的显示名与说明非空 |
+| **架构守卫** | ① 每个功能键**恰好归组一次**；② 分组表键集与宿主 `normalizeFeatures` 声明的键**完全一致**（跨文件不变量）；③ 不得再出现扁平列表 `toggleRow("字面量")`；④ 分组表必须真的被渲染 |
+| 原生视觉 | 分组样式行不得出现硬编码色值（`#rrggbb` / `rgb()`）；承载文字颜色的规则必须引用 `var(--dsw-alias-*)` |
+
+> 为什么值得扫源码：信息架构最容易"悄悄退化"——新增一个开关却忘了归组、
+> 或者某次改动把分组渲染换回扁平列表，都不报错、只是变难看。把它们变成断言后，
+> 退化会在跑测试时立刻失败。
+
 ## 假 Cordis 上下文的边界（改测试前必读）
 
 `host.test.mjs` 里的 `makeCtx()` **不提供任何真实服务**（`get()` 一律返回 `undefined`）。
@@ -76,7 +92,8 @@ node tests\adapt.test.mjs    # 服务接入层 + 架构守卫           —— 2
 
 ## 还没覆盖的（下一步）
 
-- `lib/client.js`（3615 行）的客户端半区目前**完全没有测试**——需要 DOM/React 桩。
+- `lib/client.js` 目前只有**结构性**断言（信息架构 / 分组覆盖 / 样式 token）；
+  交互行为（点击开关的乐观更新与回滚、各分组渲染顺序）仍需 DOM/React 桩才能测。
 - `lib/global.js`（全局插件库五档门禁）、`lib/mda.js`、`lib/vtd/index.js`、`lib/ds.js`（定价解析）尚无直接断言。
 - 客户端 bundle 不做相对导入，所以 `adapt.js` 只服务 Host 半区：`client.js` 里的服务名
   （`connection` / `modelDirectories` / `dynamicCordisRunner`）仍是字面量，要收敛得先确认 bundle 的解析方式。
