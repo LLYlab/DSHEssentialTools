@@ -13,7 +13,8 @@ cd <repo>
 node tests\unit.test.mjs              # 纯函数 + Config 校验            —— 128 项断言
 node tests\host.test.mjs              # 真装载宿主半区（假 Cordis ctx） —— 60 项断言
 node tests\adapt.test.mjs             # 服务接入层 + 架构守卫           —— 23 项断言
-node tests\client-structure.test.mjs  # 客户端信息架构 + 原生视觉       —— 29 项断言
+node tests\client-structure.test.mjs  # 客户端信息架构 + 服务名收敛     —— 45 项断言
+node tests\client-load.test.mjs       # 真执行客户端 bundle 并挂载      —— 17 项断言
 ```
 
 必须在**插件包内**运行：ESM 按导入方的 realpath 解析裸包名
@@ -63,10 +64,26 @@ node tests\client-structure.test.mjs  # 客户端信息架构 + 原生视觉    
 | 分组表 | 能配平截取 `DET_FEATURE_GROUPS`；分组 id 唯一非空、每组有 title/desc、每个开关的显示名与说明非空 |
 | **架构守卫** | ① 每个功能键**恰好归组一次**；② 分组表键集与宿主 `normalizeFeatures` 声明的键**完全一致**（跨文件不变量）；③ 不得再出现扁平列表 `toggleRow("字面量")`；④ 分组表必须真的被渲染 |
 | 原生视觉 | 分组样式行不得出现硬编码色值（`#rrggbb` / `rgb()`）；承载文字颜色的规则必须引用 `var(--dsw-alias-*)` |
+| 服务名收敛 | 不得再出现裸的 `ctx.get("字面量")`；`exports.inject` 必须来自 `CLIENT_INJECT` 表；**双向不变量**——以 `ctx.<name>` 直接访问的服务必须在 `inject` 里声明，声明了的也必须真被用到（Cordis 上下文 API 如 `get`/`effect`/`on` 已排除，不误报） |
 
 > 为什么值得扫源码：信息架构最容易"悄悄退化"——新增一个开关却忘了归组、
 > 或者某次改动把分组渲染换回扁平列表，都不报错、只是变难看。把它们变成断言后，
 > 退化会在跑测试时立刻失败。
+
+### `client-load.test.mjs` —— 真执行客户端半区
+`client.js` 是 `window.__ModuleLoader__.load({factory})` 形式的预打包 bundle。
+`new Function(src)` 只能证明**编译得过**，证明不了 factory 能跑、`apply(ctx)` 能挂载。
+本套在假 ModuleLoader + 假 `require` + 假 ctx 下**真执行**：
+
+| 组 | 覆盖 |
+|---|---|
+| bundle 顶层 | 顶层可执行；恰好向 `__ModuleLoader__` 注册一次；注册 id 等于包名且提供 `factory` |
+| factory 契约 | factory 可执行；只 `require("react")` / `require("react-dom")`（**bundle purity**，出现别的外部依赖即失败）；`exports.inject` 是数组且含 `slots`；`exports.apply` 是函数 |
+| `apply(ctx)` 挂载 | 假上下文下**不得抛错**；必须向 `settings.section`（DET 管理器页）与 `shell.overlay`（工具栏/浮层）注入；插槽与注册计数 |
+
+> 实测快照：apply 注入 **10 个插槽**，覆盖 6 种插槽名
+> （`conversation.view` / `conversation.chat.assistant-actions` / `conversation.chat.user-actions` /
+> `settings.section` / `shell.overlay` / `conversation.input.left`）。
 
 ## 假 Cordis 上下文的边界（改测试前必读）
 
@@ -92,8 +109,10 @@ node tests\client-structure.test.mjs  # 客户端信息架构 + 原生视觉    
 
 ## 还没覆盖的（下一步）
 
-- `lib/client.js` 目前只有**结构性**断言（信息架构 / 分组覆盖 / 样式 token）；
-  交互行为（点击开关的乐观更新与回滚、各分组渲染顺序）仍需 DOM/React 桩才能测。
-- `lib/global.js`（全局插件库五档门禁）、`lib/mda.js`、`lib/vtd/index.js`、`lib/ds.js`（定价解析）尚无直接断言。
-- 客户端 bundle 不做相对导入，所以 `adapt.js` 只服务 Host 半区：`client.js` 里的服务名
-  （`connection` / `modelDirectories` / `dynamicCordisRunner`）仍是字面量，要收敛得先确认 bundle 的解析方式。
+- `lib/client.js` 已覆盖**可装载性 + 信息架构 + 服务名收敛**；仍缺**交互行为**
+  （点击开关的乐观更新与回滚、分组渲染顺序、余额轮询）——需要更完整的 React 桩。
+- `lib/global.js`（全局插件库五档门禁，安全相关）、`lib/mda.js`、`lib/vtd/index.js`、
+  `lib/ds.js`（定价页解析）尚无直接断言。
+- 客户端服务名必须收敛到 `CLIENT_SERVICE` / `CLIENT_INJECT` 两张表，**不能**改用
+  共享模块：宿主 `dsh-client-modules` 用 lazy CJS 模型 + bundle purity gate 装载，
+  相对导入不会被解析（已在宿主源码中确认）。
