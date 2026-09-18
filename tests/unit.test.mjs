@@ -18,11 +18,15 @@
 import {
   Config,
   apply,
+  hasOpenTurn,
   inject,
+  ipv4Private,
+  isDsPeakNowHost,
   isPrivateHostname,
   name,
   safeHttpUrl,
   safeVersionId,
+  textContent,
 } from "../lib/index.js";
 
 let pass = 0;
@@ -167,6 +171,76 @@ if (!custom.error) {
   eq(custom.value.bootFailLimit, 5, "显式 bootFailLimit 生效");
   eq(custom.value.lvalRoot, "D:\\p", "显式 lvalRoot 生效");
 }
+
+// ─────────────────────────────────────────────────────────────
+section("ipv4Private — IPv4 私网段（直接导出，单独钉边界）");
+
+ok(ipv4Private("10.0.0.1"), "10/8");
+ok(ipv4Private("172.16.0.0"), "172.16/12 下界");
+ok(ipv4Private("172.31.255.255"), "172.16/12 上界");
+ok(!ipv4Private("172.15.255.255"), "172.15 在段外，必须放行");
+ok(!ipv4Private("172.32.0.0"), "172.32 在段外，必须放行");
+ok(ipv4Private("192.168.255.255"), "192.168/16");
+ok(ipv4Private("169.254.0.1"), "链路本地");
+ok(ipv4Private("127.0.0.1"), "环回");
+ok(ipv4Private("0.0.0.0"), "0/8");
+ok(ipv4Private("224.0.0.1"), "组播");
+ok(!ipv4Private("8.8.8.8"), "公网地址放行");
+eq(ipv4Private("not-an-ip"), false, "非 IPv4 文本返回 false");
+eq(ipv4Private(""), false, "空串返回 false");
+
+// ─────────────────────────────────────────────────────────────
+section("textContent — 内容块提纯");
+
+eq(textContent([{ type: "text", text: "a" }, { type: "image" }, { type: "text", text: "b" }]), "a\nb", "只取 text 块，以换行连接");
+eq(textContent([{ type: "text", text: "" }, { type: "text", text: "x" }]), "\nx", "空字符串 text 仍占位（与实现一致）");
+eq(textContent([{ type: "text" }, { type: "text", text: 5 }]), "", "text 非字符串则丢弃");
+eq(textContent([]), "", "空数组返回空串");
+eq(textContent("not-an-array"), "", "非数组返回空串");
+eq(textContent(null), "", "null 返回空串");
+eq(textContent(undefined), "", "undefined 返回空串");
+
+// ─────────────────────────────────────────────────────────────
+section("hasOpenTurn — 会话是否仍在生成回答");
+
+eq(hasOpenTurn([{ type: "turn/start" }, { type: "turn/end" }]), false, "一对一 → 无未闭合轮次");
+eq(hasOpenTurn([{ type: "turn/start" }]), true, "只有 start → 有未闭合轮次");
+eq(hasOpenTurn([{ type: "turn/start" }, { type: "turn/end" }, { type: "turn/start" }]), true, "多一次 start → 有未闭合轮次");
+eq(hasOpenTurn([{ type: "turn/end" }, { type: "turn/start" }]), false, "顺序颠倒但 start/end 计数相等 → 判为无未闭合轮次（实现按计数而非顺序）");
+eq(hasOpenTurn([{ type: "turn/end" }, { type: "turn/end" }]), false, "end 多于 start → 不是未闭合轮次");
+eq(hasOpenTurn([]), false, "空数组 → false");
+eq(hasOpenTurn(null), false, "null → false");
+eq(hasOpenTurn("x"), false, "非数组 → false");
+eq(hasOpenTurn([null, { type: "turn/start" }, 123, { type: "turn/end" }]), false, "脏事件被忽略，不误判");
+
+// ─────────────────────────────────────────────────────────────
+section("isDsPeakNowHost — 峰谷时段（北京时间，直接决定报价）");
+
+// 自校准出"UTC 周一"，避免依赖硬编码的星期。
+function mondayUTC() {
+  const d = new Date(Date.UTC(2026, 0, 5, 0, 0, 0));
+  while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1);
+  return d;
+}
+const mon = mondayUTC();
+eq(mon.getUTCDay(), 1, "测试基准日自检：必须是周一");
+// 北京时间 = UTC+8；北京 9:00–18:00 对应 UTC 同日 1:00–10:00。
+const atUtc = (base, dayOffset, hourUtc) =>
+  new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() + dayOffset, hourUtc, 0, 0));
+
+eq(typeof isDsPeakNowHost(), "boolean", "无参调用可用（缺省取真实时间）");
+eq(isDsPeakNowHost(atUtc(mon, 0, 1)), true, "周一 北京 09:00 → 峰值（下界含）");
+eq(isDsPeakNowHost(atUtc(mon, 0, 0)), false, "周一 北京 08:00 → 非峰值");
+eq(isDsPeakNowHost(atUtc(mon, 0, 2)), true, "周一 北京 10:00 → 峰值");
+eq(isDsPeakNowHost(atUtc(mon, 0, 3)), true, "周一 北京 11:00 → 峰值");
+eq(isDsPeakNowHost(atUtc(mon, 0, 4)), false, "周一 北京 12:00 → 非峰值（上界不含）");
+eq(isDsPeakNowHost(atUtc(mon, 0, 5)), false, "周一 北京 13:00 → 非峰值（午休）");
+eq(isDsPeakNowHost(atUtc(mon, 0, 6)), true, "周一 北京 14:00 → 峰值（下界含）");
+eq(isDsPeakNowHost(atUtc(mon, 0, 9)), true, "周一 北京 17:00 → 峰值");
+eq(isDsPeakNowHost(atUtc(mon, 0, 10)), false, "周一 北京 18:00 → 非峰值（上界不含）");
+eq(isDsPeakNowHost(atUtc(mon, 4, 2)), true, "周五 北京 10:00 → 峰值");
+eq(isDsPeakNowHost(atUtc(mon, 5, 2)), false, "周六 北京 10:00 → 非峰值");
+eq(isDsPeakNowHost(atUtc(mon, 6, 7)), false, "周日 北京 15:00 → 非峰值");
 
 // ─────────────────────────────────────────────────────────────
 section("结果");
