@@ -10,8 +10,9 @@ DET 有 8400+ 行、16 项能力、**76 个 typert 端点**。历史教训（见
 
 ```powershell
 cd <repo>
-node tests\unit.test.mjs     # 纯函数 + Config 校验          —— 85 项断言
-node tests\host.test.mjs     # 真装载宿主半区（假 Cordis ctx）—— 60 项断言
+node tests\unit.test.mjs     # 纯函数 + Config 校验            —— 128 项断言
+node tests\host.test.mjs     # 真装载宿主半区（假 Cordis ctx） —— 60 项断言
+node tests\adapt.test.mjs    # 服务接入层 + 架构守卫           —— 23 项断言
 ```
 
 必须在**插件包内**运行：ESM 按导入方的 realpath 解析裸包名
@@ -40,6 +41,17 @@ node tests\host.test.mjs     # 真装载宿主半区（假 Cordis ctx）—— 6
 | 原生接管门控 | `applyHostGating` 的**不变量**：返回新对象、**绝不修改调用方传入的对象**（用户开关值必须原样保留，降级回旧宿主时功能自动恢复） |
 | MSBuild 解析 | **目标 (1) 的钉子**：配置为空 → 自动探测且结果必须是真实存在的文件；同配置命中缓存；**配置指向不存在的路径时必须回退探测**（不得把坏路径交给调用方）；配置指向真实文件时原样优先 |
 
+### `adapt.test.mjs` —— 宿主服务接入层 + 架构守卫
+| 组 | 覆盖 |
+|---|---|
+| `SERVICE` 表 | 被冻结、值均为非空字符串、`serviceNames()` 去重 |
+| `svc()` | 上下文非法 / 服务缺失 / 服务为 `null` → `undefined`；**服务取值抛错必须被吞掉**（"单一子能力失败不拖垮整体"的基础）；服务存在时原样返回**同一引用**（不包壳） |
+| `svcWith()` | 能力式分流：缺少所需方法 → `undefined`；同名属性不是函数 → `undefined` |
+| **架构守卫** | ① `lib/index.js` 里**不得再出现裸的 `ctx.get("字面量")`**；② 接入层调用点数量下限；③ `ctx.get(name)` 只允许出现在 `adapt.js` |
+
+> 服务名从此唯一归属 `lib/adapt.js` 的 `SERVICE` 表：宿主改名只改一处，
+> 架构守卫会在下次跑测试时拦住任何"又写回字面量"的改动。
+
 ## 假 Cordis 上下文的边界（改测试前必读）
 
 `host.test.mjs` 里的 `makeCtx()` **不提供任何真实服务**（`get()` 一律返回 `undefined`）。
@@ -66,5 +78,5 @@ node tests\host.test.mjs     # 真装载宿主半区（假 Cordis ctx）—— 6
 
 - `lib/client.js`（3615 行）的客户端半区目前**完全没有测试**——需要 DOM/React 桩。
 - `lib/global.js`（全局插件库五档门禁）、`lib/mda.js`、`lib/vtd/index.js`、`lib/ds.js`（定价解析）尚无直接断言。
-- 具名导出以外的纯函数（`isDsPeakNowHost` / `textContent` / `hasOpenTurn` / `ipv4Private`）
-  **尚未导出**，因此测不到；补导出后可并入 `unit.test.mjs`。
+- 客户端 bundle 不做相对导入，所以 `adapt.js` 只服务 Host 半区：`client.js` 里的服务名
+  （`connection` / `modelDirectories` / `dynamicCordisRunner`）仍是字面量，要收敛得先确认 bundle 的解析方式。
