@@ -1,5 +1,189 @@
 # Changelog
 
+## v2.9.4 — 修好「DET 与它管理的插件」的联动；草图判定改成真·实时；草图拆成独立包
+
+- **依赖对齐 DSH 0.2**：`@deepseek-ai/dsh-typert-protocol` 由 `^0.1.7-rc.2` 抬到 `^0.2.0-rc.2`，并补齐此前**漏声明**的运行时依赖 `@deepseek-ai/dsh-tools` / `dsh-llm` / `dsh-credentials` / `dsh-storage-domain` / `dsh-session`（统一 `^0.2.0-rc.2`）—— 这五个此前只靠在运行时从宿主树里解析（junction + 运行时解析模式），声明层是缺的。代码本身无需适配 —— 0.2.0-rc.2 下 10 个测试文件全绿（约 449 条断言），升级后的真实宿主里 DET 工具、端点与 `.dset-*` 客户端界面均已实测渲染。
+
+三处都是用户实测反馈：「关掉一些插件反而影响了 DET 的自带功能/UI」、
+「总开关关闭后该停的没停（或该恢复的没恢复）」、「在 DET 里禁用/启用常驻插件不生效或重启后回弹」，
+以及「自动切换视觉模型居然不是实时检查模型表判定的」。
+
+### 1) 联动：意图与事实**彻底**分开（修「重启后回弹」）
+
+根因是**一个字段被当成两个东西用**：`globallyEnabled` 既是「用户的启用意图」，
+又是「总开关/兜底的记账」，还被 `gpList` 拿 loader 的**实际状态**回写。
+三条路径互相覆盖，于是「在 DET 里禁用常驻插件 → 重启后又活了」反复出现。
+
+- 新增权威字段 **`enabledIntent`**（`global.js` 域里是可选字段 → 旧记录照样能读，
+  读到旧记录时由 `permanentIntent` 推断一次并**自动迁移**）。
+- `permanentIntent()` 的优先级重写：**档位「全局禁用」= 硬否决**（按定义「拒绝任何启用」）
+  → 其次 `enabledIntent` → 最后才是旧记录的兼容推断（`level` 优先于会被记账污染的 `globallyEnabled`）。
+- `gpList` **不再**把 loader 的事实回写进意图字段（旧代码那句
+  `updateMeta(p.id, { globallyEnabled: actualEnabled })` 正是抹掉意图的凶手，
+  而它上面的注释还写着「不再用事实覆盖意图」—— 注释与代码相反）。现在事实只以
+  `actualEnabled` / `fiberPhase` / `stateMismatch` 的形式**如实报告**，一个字都不落回存储。
+- `gpSetPermanentEnabled` **不再改档位**。旧实现把用户的五档改写成
+  `always` / `disabled`，`ai-approve` / `frozen` 就这么被永久销毁了。二分开关表达的是
+  「装不装」，与「允许谁启用」是两个维度，现在分开存（档位原样保留，界面也据此提示
+  「五档档位保持「x」不变」）。
+- 档位改动也立刻落到 loader：改成「全局禁用」= 卸下条目；从「全局禁用」改回别的档位
+  则按 `enabledIntent` 重新装回（顺手给旧记录补上意图字段，否则「本来想开着」会被推断丢掉）。
+- 兜底不再被自己撤销：总开关暂停 / 启动连续失败兜底都写 `enabledIntent=false`
+  （这是**有意的**停用），于是重启后 `_applyPersistentPermanentStates` 不会又把它装回来。
+- 暂停快照的 `kind` 如实标注（`permanent` / `library`）。旧代码一律写 `library`，
+  导致 `_resumeManagedPlugins` 里判 `kind === "installed"` 的那条分支**永远不命中**（死代码）。
+
+### 2) 联动：不再强迫整页刷新（修「关掉插件反而影响 DET 自带功能/UI」）
+
+- 旧实现在常驻插件启停后无条件 `window.location.reload()` ——
+  **即使宿主回了 `applyError`（什么都没生效）也照刷**。一次整页刷新会把 DET 自己的
+  界面、设置页位置、未保存的输入一起重置；这就是「关掉一个插件却把 DET 自己的功能和
+  界面也搅了」。
+- 现在：**只在你真的改了 loader 状态时**提示，并把「刷新前端」做成**你点才刷**的按钮。
+  回报以宿主给的 `actualEnabled` 为准（`loader 已实时禁用` / `实时未生效：<原因>`），
+  不再「说成功了但其实没生效」。
+- 常驻插件不再被误当成动态 Cordis 插件：`_stopSession` 以前会拿占位 `pluginId`
+  `"permanent"` 去问动态运行器「停掉一个叫 permanent 的插件」（空转的误调用），现在挡掉。
+- 顺带确认并**保留**平台已有的正确行为：动态插件的浏览器半区由平台在宿主停用广播
+  `cordis/dynamic-retract` 时自行 retract，DET 不需要（也不该）再维护一条手动卸载旁路。
+
+### 3) 草图：判定改成**真·实时**（用户口径：「不是实时检查模型表判定的」）
+
+两处陈旧，一起修：
+
+- **Host 侧拿的是历史模型**：`sessionModelRoute` 只读会话日志里最后一条
+  `request/header` —— 那是**已经跑过**的那一轮。用户在模型选择器里换了模型后，会话先落一条
+  `model/selection`、投影里出现 `pending`，要等下一轮请求才会被消费；只看 `request/header`
+  就永远慢一拍，于是「当前模型能收图」判断错误，发送时才被宿主以
+  `MODEL_DOES_NOT_SUPPORT_IMAGES` 顶回来。
+  → 新增 `liveModelSelection()`：优先读会话投影 `modelSelection` 的 **`pending ?? lastUsed`**，
+  再退事件日志（最后一条 `model/selection` 若晚于最后一条 `request/header` 就采信它），
+  最后才退宿主默认模型；返回里带 `source` / `live` 如实标注来源。
+- **Client 侧复用了挂载那一刻的结论**：`doImport` 拿 `support` 状态当缓存，
+  画布开着时换模型完全被忽略。→ 每次点「导入」都重新问一遍宿主。
+- 判据收口到一处 `modelAcceptsImages()`：**只认宿主模型表的 `inputModalities`**，
+  `draftSupport` 与 `dltVisionRoutes` 共用，两处判定不会漂移；拿不到就按「收不了」处理。
+- 附件白名单也参与判定（`attachments.imageLimits` 不收 `image/png` 时不当图片）。
+
+### 4) 草图：其余可复现缺陷
+
+- **撤销真的能撤**：历史栈改为在**落笔之前**抓快照（并记住当时的「画布是否为空」）。
+  旧实现在落笔**之后**才入栈，于是第一次「撤销」拿回的是刚画完的那张 —— 看起来毫无反应，
+  而且第一笔永远撤不掉。
+- **交付不撒谎**：`allowImage` 为真却挂不上附件（客户端服务缺失 / `addAttachments` 拒绝）时
+  如实回报 `imageFailure` / `delivered`，按钮上显示「⚠ 已存成 PNG：…（作为图片附件失败：…）」，
+  不再谎报「已作为图片注入」。
+- **落盘收窄 + 同名不覆盖**：`dir` 只接受本会话工作区（其余忽略并如实回报
+  `dirIgnored`）；同秒连画两张自动加 `-2` / `-3`，不再覆盖第一张。
+
+### 5) 草图拆成独立包发布：`dsh-sketch-draft`
+
+草图这块**不需要 DET 的任何东西**（只依赖宿主的 `llm` / `sessions` / `sessionProjections` /
+`attachments`），所以拆成独立可安装、可发布的包：`C:\Users\L2959\.dsh\plugins\dsh-sketch-draft`
+（npm 名 `dsh-sketch-draft`，**已发布 `dsh-sketch-draft@1.0.0`**（dist-tag `latest`），自带 `cordis.patch.yml` / README / CHANGELOG / install.ps1 / publish.ps1 /
+85 项断言的测试）。拆出来之后：不想装 DET 的人也能用；DET 可以卸掉自己那份；
+这条链上的修复能独立发版。
+
+**单拥有者约定**（拆包后「同一个功能有两个实现」的唯一协调点）：新增
+`subordinateGrants().grants.sketchDraft`。DET 在场且「草图导入」开着 →
+独立包读到这个声明后**主动让位**（一个插槽都不注册），所以输入框旁永远只有一个铅笔；
+DET 关掉 `dltDraft`（或总开关关闭）→ 独立包自动接手，反之 DET 不需要知道独立包存在。
+让位方向只有一条，不会互相抢。
+
+### 测试
+
+- 新增 `tests/draft.test.mjs`（**40 条**）：`liveModelSelection` 的四种来源与优先级、
+  `modelAcceptsImages` 的保守语义、`draftSupport` 的合成结论与原因、附件白名单、
+  `draftSave` 的路径收窄 / 魔数 / 同名不覆盖，以及「客户端不得复用旧结论」的源码守卫。
+- `tests/gp-state.test.mjs` 从 35 条扩到 **71 条**：意图模型重写后的优先级、硬否决、
+  「只改装不装、不销毁档位」、被否决时一个 loader 改动都不发，并新增「`subordinateGrants().grants.sketchDraft` 与 dltDraft 开关联动」的断言与**源码守卫**
+  （拦住「事实覆盖意图」与「强制整页刷新」回流）。
+- 新增独立包 `dsh-sketch-draft/tests/sketch-draft.test.mjs`（**85 条**）：包身份与 `apply`
+  装载契约、四个端点、让位矩阵（含 DET 抛错时不失效）、client bundle 真执行
+  （含「被让位时不注册按钮」）。
+- 全量：DET unit **128** · host **60** · adapt **23** · client-structure **47** ·
+  client-load **17** · pause **10** · gp-state **71** · dlt-host **37** · dlt-integration **22** ·
+  draft **40**；独立包 sketch-draft **85**。合计 **540**。
+
+## v2.9.3 — 真正修好「右下角看不见单价了」（真因：状态框拿不到当前会话）
+
+v2.9.2 只治了「模型目录服务取太早」，用户复测**依旧失败**。这次不再靠猜：给单价那一格加了**自报状态**（class 上带 `dset-sb-price-*` / `dset-sb-diag-*`，可从 DOM 直接读），于是从**运行中的页面**上一格一格定位到了真因链：
+
+1. `dset-sb-diag-nosid` → **状态框拿不到当前会话 id**。它读的是 `sessions.list.getSnapshot().current`，而这个宿主版本的会话列表快照**只有 `byId`**：「当前会话」由 ui-session 自己的绑定源持有，于是这里长期返回 undefined，凡是依赖它的都静默失效（单价、本对话花费…）。
+   → 改为：**优先槽位给的 `props.sessionId`**（DET 自己的工具栏一直是这么用的）+ 旧字段 `current` + 「会话列表里被主视图持有的那个」三级兜底。
+2. `dset-sb-diag-nomodel` → 客户端**拿不到跨插件的 `modelDirectories`**，所以算不出「当前模型」。
+   → 改为**直接问宿主**：新增端点 `dltSessionRoute`（读会话最近一次 `request/header`，退回宿主默认模型），这才是「谁在跑」的事实源；modelDirectories 只当切模型时的可选加速。
+3. `dset-sb-diag-routefail` → 宿主端那份新代码**还没装载**（客户端 bundle 会热更新，宿主半区必须重启 DSH）。这也说明 v2.9.1/v2.9.2 那批**宿主侧**修复（插件管理、`dltVisionRoutes`）此前根本没生效。
+   → 顺手把单价做成**不依赖重启也一定显示**：只要有单价数据，就算拿不准当前模型也按表内第一条显示（tooltip 里注明「未匹配到当前模型，按表内第一条显示」），**绝不再因为模型是 null 把整格变成「—」**。
+
+实测（页面上直接读 DOM class）：修复前 `…price-nomodel…diag-nosid`（空）→ 中途 `…nomodel…diag-routefail` → 现在 **`…price-ok_guess…diag-routefail`，单价已显示**；等 DSH 重启后宿主路由生效，会变成 `price-ok`（精确匹配当前模型）。
+
+## v2.9.2 — 修「右下角看不见单价了」
+
+用户反馈：v2.9.1 把状态框改成两列网格后，右下角的**单价**看不见了。查下来是**取数链路**两处老毛病被新样式放大暴露（宿主侧官网抓取本身没问题 —— 直接跑 `fetchDsPrice()` 198ms 就拿到 CNY 单价表）：
+
+- **模型目录服务抓得太早**：`DshStatusBox` 在**挂载那一刻**把 `props.modelDirectories` 抓进闭包，而 DET 的状态框往往比 model-selection 半区先挂载 → 拿到 `undefined` → `curModel` 永远是 null → 算不出单价 → 那一格只剩一个「—」（旧版是「价格 —」，看着像"没这一项"，新版标签写着「单价」就显得是"单价没了"）。改成**惰性解析 + 每秒重试（最多 30 次）**，服务晚到也能接上（拿到就退化成订阅）。
+- **单价只在启动那一刻取一次**：那一刻网络抖一下/端点没就绪，整局都不会再取。改成**未取到时每 15 秒自动重试（上限 8 次）**，并支持点那一格手动重取。
+- 顺便把单价格式改回一眼能认的写法：`命中 ¥0.02 · 未命中 ¥0.04 · 输出 ¥1`（v2.9.1 的紧凑写法 `¥0.02 / ¥0.04 / ¥1` 丢了字段名），取不到时显示「载入中…」/「未取到 · 点我重试」而不是光秃秃一个「—」。
+- 单价那一格额外**自报状态**：class 上带 `dset-sb-price-ok / -pending / -err / -noprice / -nomodel`，于是「到底是没取到数据、还是没拿到当前模型、还是这一半根本没换新代码」可以从 DOM 一眼读出（排查用；旧版没有这个 class）。
+
+## v2.9.1 — 右下状态框重排 / 草图改为「作为图片注入」/ 修好常驻插件禁用不生效
+
+三处都是用户实测反馈（「排版不美观（尤其是右下）」「不能在对话中直接注入 draft（作为图像）」「插件管理有问题」）。
+
+### 1) 右下角状态框重做
+- 收起态从「三行各自 flex 右对齐」改成**两列网格**：左列是右对齐的灰字标签（单价 / 余额 / MMS），右列是数值（`tabular-nums`），行宽由 grid 自动对齐，不再一行宽一行窄、左缘犬牙交错。
+- MMS 那行的长句收进 `title`，值只留「省钱中 / 关闭」；峰/谷徽标并入「单价」标签；余额与「本对话 ¥」同格呈现。
+- 展开卡片（`.dset-statusbox-line` 那一套）保持不变。
+
+### 2) 草图：从「让模型自己读文件」改成「直接作为图片注入」
+- **旧行为**：当前模型不支持图片时，草图落盘成 PNG 并把**路径**插进输入框 —— 模型得自己调 `read_image` 去读（用户明确不接受：「这玩意居然需要模型自己调工具从文件夹读」）。
+- **新行为**：点「导入」时
+  1. 当前模型就收图 → 直接作为**图片附件**放进输入框；
+  2. 不收图但有视觉模型 → 先**自动切到**一个可用的视觉模型（新端点 `dltVisionRoutes`：Host 逐个 `resolveModelInfo` 筛 `inputModalities` 含 `image` 的，同 provider + 名字带 vision 的优先），再作为图片附件注入；导入后在按钮旁给一个「**切回 <原模型>**」（改的是会话路由，不动档位/偏好）；
+  3. 一个视觉模型都没有 → 才退回「存 PNG + 插路径」，并如实说明原因。
+- 主按钮**如实写明这次要做什么**：「导入为图片」/「切到视觉模型并导入」/「存 PNG 并插入路径」；切模型失败就报错，不再偷偷降级成插路径（旧代码的失败分支还会谎报「路径已插进输入框」）。
+
+### 3) 插件管理：修「在 DET 里禁用常驻插件，重启后又活了」
+三个真实缺陷一起修，并新增一个不用重启的「立即应用」入口：
+1. **名字对不上（禁用永远落不到条目上）**：profile 的 `insert` 行有两套名字 —— `id: dbs` / `name: 'dsh-bgm-service'`（包名）。旧代码只按 `entry.options.name` 匹配，于是库里 `moduleName: 'dbs'` 的记录**永远找不到** loader 条目，`_applyPersistentPermanentStates` 直接 `continue`。新增 `matchLoaderEntry()` 按 `options.name → options.id → options.module → entry.id → id 末段` 依次匹配（外加大小写不敏感兜底），并把记录里的 `moduleName` 就地修成 loader 那一套。
+2. **意图被事实覆盖（档位说禁用、却永远不会禁）**：`gpList` 以前拿 loader 的实际状态回写 `globallyEnabled`，把用户「禁用」的意图抹平。现在 `permanentIntent()` 让**档位**成为唯一意图来源 —— `level=disabled` 要停、`level=always` 要开（`_disableAllGlobalPlugins` 因总开关/兜底写下的 `globallyEnabled=false` 只是记账，不再被当成意图）、其余档位才看 `globallyEnabled`；`gpSetPermanentEnabled()` 改为**同时写档位**，二分开关照样表达意图。
+3. **启动时应用从未执行（死锁）**：`loader.await()` 会等 loader 树里**所有**条目的 init/inertia 任务，其中就包括 DET 自己这一条 —— 从一个插件的 `apply()` 里 await 自己必然永不返回。实测后果：`tables.boot.lastBootAt` 停在 9 天前，禁用状态一次都没应用上。改成「**延迟 3 秒** + **首个会话出现**」两脚触发，并在总开关重新打开时再应用一次（总开关关闭期间一件不碰，保持「完全原生」口径）。
+- **新增端点 `gpApplyPermanentStates`** + 插件管理页右上角「**立即应用禁用状态**」按钮：不必重启 DSH 就能把「档位=禁用」的常驻插件当场卸下，逐条回报「已应用 / 修正记录 / 失败 / 跳过 / 总开关关闭」。
+- **列表更诚实**：新增「意图与事实相反」提示（档位说禁用但仍在运行 → 明确指出点哪个按钮），启用/禁用两个快捷档位按**意图**高亮而不是按当前装载状态。
+
+### 测试
+- 新增 `tests/gp-state.test.mjs`（**35 条**）：四种名字的匹配（含 dbs 的 `dbs` vs `dsh-bgm-service` 别名）、容器/分组条目不参与、意图推导（档位优先 + 记账值不算数）、应用函数把意图落到 loader、幂等、总开关关闭时一件不碰、`loader.update` 失败如实进 failed、容器条目永不碰、记录自愈（moduleName + globallyEnabled）。
+- 全量：unit **128** · host **60** · adapt **23** · client-structure **47** · client-load **17** · pause **10** · dlt-host **37** · dlt-integration **22** · gp-state **35**。
+
+## v2.9.0 — DLT 集成:把 DLT 的全部功能搬进 DET(DLT 本体整体停摆)
+
+一个插件干完两个插件的事:DLT(`dsh-light-tool`)的全部能力现在由 DET 自己提供,DET 总开关打开时 **DLT 整体停摆**。
+
+### 自带引擎,不靠 DLT 在场
+- 新增 `lib/dlt-engine.js`(DLT 纯逻辑层 `lib/core.js` 的副本:环境表 / 进程执行 / Python 文档引擎 / Office COM / Edge 无头 / 官网定价解析)与随包资产 `py/dlt_docs.py`、`py/dlt_office.ps1`。**DLT 卸载后 DET 依旧完整可用** —— 这是「DLT 可彻底停摆甚至卸载」的前提。
+- `package.json` 的 `files` 补上 `py`,并把 `dsh-typert-protocol`/`schemastery` 之外的依赖按现状(经 profile 解析的 `@deepseek-ai/dsh-tools`)沿用。
+
+### 六个模型工具 + 系统提示(**同名**)
+- 新增 `lib/dlt-tools.js`,注册与 DLT **完全相同**的六个工具:`dlt_env` / `dlt_run` / `dlt_build` / `dlt_doc_read` / `dlt_doc_write` / `dlt_doc_convert`,并注入同名的 `tool:dlt` 系统提示段落。模型侧的习惯、提示词、既有文档与测试都不用改 —— 变的只是「谁提供」。
+- 六个 DET 功能键逐个开关:`dltDocs` / `dltPreview` / `dltEnv` / `dltRun` / `dltCost` / `dltDraft`(默认全开),归在管理器新增的 **「DLT 集成」** 分组里,改完即时装卸。
+- **撞名自愈**:启动瞬间 DLT 可能还没来得及让位,`tools.register` 会抛「已被注册」。此时**只跳过那一件并登记冲突**,2.5 秒后重试(最多 4 次)—— 不让一个撞名把整个插件带崩。
+
+### 三个界面也搬了进来
+- **每轮成本小签**(`conversation.chat.turnTail` → 新端点 `dltCost` / `dltPricingInfo`):移植 DLT 的「本轮 ¥x.xx」+ 展开 token 明细;余额与单价仍由 DET 自己的状态框呈现(那是 DLT 余额卡的重复实现,故不再单挂一张卡)。
+- **右栏文档预览**(`documentPreviews` + `sidebar.right.tab.document` → 新端点 `dltOffice`):docx / xlsx / csv 的只读渲染器,并沿用「产品自带实现(priority `builtin`)认领该后缀就让位」的判定。
+- **草图导入**(`conversation.input.left` → 新端点 `dltDraftSupport` / `dltDraftSave`):输入框「+」旁的小铅笔按钮,现画一张。模型声明了图片输入(`inputModalities` 含 `image`)就作为**图片附件**挂进输入框;否则存成 `<工作区>/.dsh-drafts/sketch-*.png`,并把**工作区相对路径**插进输入框文字。两条路都先落盘(Host 端 PNG 魔数校验),草图因此总有一份实体文件。判据由 Host 回答,客户端不猜 —— 免得「挂上去了、发送时才被宿主以 `MODEL_DOES_NOT_SUPPORT_IMAGES` 拒绝」。
+
+### 「DET 启用时完全抑制 DLT」
+- `subordinateGrants().grants` 新增 `dlt` / `dltTools` / `dltUi` / `dltSettings`(总开关打开 + `det.subordinate` 未关时为 true);DLT 侧据此**整体停摆**:六个工具与系统提示都不注册,成本小签 / 余额卡 / 草图按钮 / 右栏预览连同**它自己的设置页入口**一起撤下。想让 DLT 自己回来,关掉 DET 总开关或 `det.subordinate` 即可(DLT 每 5 秒复核一次,无需重启也不需要刷新页面)。
+- `detFeatureGet` 现在一并回传 `dltMeta` / `dltKeys` / `dltStatus`(工具清单 / 提示段落 / 引擎路径 / 定价来源),`detFeatureSet` 接受这六个键。
+- **这不是 loader 级停用**:DLT 不在 DET 的全局插件库里,`pause` 那套逻辑依旧一根手指都不碰它(见 v2.6.0);接管走的是 `ctx.get('dshEssentialTools').subordinateGrants()` 这条既有约定面。
+
+### 测试
+- 新增 `tests/dlt-host.test.mjs`(**37 条**):六个同名工具注册、分项开关只装卸对应块、总开关关掉一件不留、**撞名只跳那一件且可重试补齐**、`dltDraftSave` 真落合法 PNG(非法数据拒绝且不留坏文件)、`dltDraftSupport` 无 LLM 时如实回答不支持图片。
+- 新增 `tests/dlt-integration.test.mjs`(**22 条**):用会答 `detFeatureGet` 的假 connection 真跑客户端 `apply()`,并在四种开关组合下核对在册登记(含 dispose 回收)。
+- `tests/client-structure.test.mjs` 的权威功能键表补上六个 DLT 键(新增开关必须归组才有 UI);全量:unit **128** · host **60** · adapt **23** · client-structure **47** · client-load **17** · pause **10** · dlt-host **37** · dlt-integration **22**。
+
 ## v2.7.0 — 可安装的 bundle(manifest 完整化)
 
 - **新增 `dsh.bundle.patch`**:`package.json` 的 `dsh` 节除 `client` 外,现在声明 `bundle.patch → ./cordis.patch.yml`,并在仓库根补上了对应的 `cordis.patch.yml`。在此之前 DET 只声明 `dsh.client`,而**单有 `dsh.client` 并不构成可安装的 bundle**:`dsh plugin add` 装不上,各插件收录库的静态校验会直接判 `invalid` —— 中心 Registry 的 `rejected.json` 里 DET 的理由正是 `package.json does not declare a safe dsh.bundle.patch`。

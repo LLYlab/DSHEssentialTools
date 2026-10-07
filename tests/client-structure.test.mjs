@@ -120,7 +120,8 @@ if (block) {
 section("架构守卫 —— 每个功能键恰好归组一次");
 
 // 宿主侧开关归一化表是权威键集（含 master；master 单独渲染，不进球）。
-const FEATURE_KEYS = ["master", "file", "run", "ver", "vtd", "mda", "plugins", "approve", "mms", "secCmdAudit", "secPromptDefense"];
+// DLT 集成那六个键同样是「必须显式归组」的开关（宿主 normalizeFeatures 里有声明）。
+const FEATURE_KEYS = ["master", "file", "run", "ver", "vtd", "mda", "plugins", "approve", "mms", "secCmdAudit", "secPromptDefense", "dltDocs", "dltPreview", "dltEnv", "dltRun", "dltCost", "dltDraft"];
 const rowKeys = groups.map((g) => g.key);
 const dup = rowKeys.filter((k, i) => rowKeys.indexOf(k) !== i);
 eq(dup.length, 0, `分组表里不得有重复功能键：${[...new Set(dup)].join(", ") || "无"}`);

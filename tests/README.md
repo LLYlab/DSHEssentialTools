@@ -13,8 +13,21 @@ cd <repo>
 node tests\unit.test.mjs              # 纯函数 + Config 校验            —— 128 项断言
 node tests\host.test.mjs              # 真装载宿主半区（假 Cordis ctx） —— 60 项断言
 node tests\adapt.test.mjs             # 服务接入层 + 架构守卫           —— 23 项断言
-node tests\client-structure.test.mjs  # 客户端信息架构 + 服务名收敛     —— 45 项断言
+node tests\client-structure.test.mjs  # 客户端信息架构 + 服务名收敛     —— 47 项断言
 node tests\client-load.test.mjs       # 真执行客户端 bundle 并挂载      —— 17 项断言
+node tests\pause.test.mjs             # 总开关停用/恢复的真实范围       —— 10 项检查
+node tests\gp-state.test.mjs          # 常驻插件意图模型 + 联动源码守卫  —— 71 项断言
+node tests\dlt-host.test.mjs          # DLT 集成：工具/提示/端点/容错    —— 37 项断言
+node tests\dlt-integration.test.mjs   # DLT 集成：客户端按开关装配      —— 22 项断言
+node tests\draft.test.mjs             # 草图：实时模型表判定 + 落盘收窄  —— 40 项断言
+```
+
+与草图相关的那个**独立包**（`dsh-sketch-draft`，见 CHANGELOG v2.9.4 第 5 节）
+自带一套测试，在它自己的目录里跑：
+
+```powershell
+cd C:\Users\L2959\.dsh\plugins\dsh-sketch-draft
+node tests\sketch-draft.test.mjs      # 端点 + client bundle 真装载 + 让位矩阵 —— 85 项断言
 ```
 
 必须在**插件包内**运行：ESM 按导入方的 realpath 解析裸包名
@@ -84,6 +97,58 @@ node tests\client-load.test.mjs       # 真执行客户端 bundle 并挂载     
 > 实测快照：apply 注入 **10 个插槽**，覆盖 6 种插槽名
 > （`conversation.view` / `conversation.chat.assistant-actions` / `conversation.chat.user-actions` /
 > `settings.section` / `shell.overlay` / `conversation.input.left`）。
+> 注意：这套的假 connection 对**所有** RPC 都答 `{ok:false}`，因此功能开关永远读不到、
+> `masterWiring` 从不执行 —— DLT 集成那三块界面由下面 `dlt-integration` 单独覆盖。
+
+### `gp-state.test.mjs` —— 常驻插件「意图 / 事实」单一真相
+钉的是用户实测的缺陷（「在 DET 里禁用常驻插件，重启后又活了」、
+「关掉 DET 总开关后该停的没停/该恢复的没恢复」、「关掉插件反而影响了 DET 自己的功能/UI」）：
+
+| 组 | 覆盖 |
+|---|---|
+| `matchLoaderEntry` | profile 的两套名字都要认得：`options.name` / `options.id` / `options.module` / `entry.id` / id 末段（`include:xxx`）+ 大小写不敏感兜底；分组条目（`options.group`）与空名不参与；找不到返回 `null` |
+| `permanentIntent` | **意图的唯一权威是 `enabledIntent`**；档位「全局禁用」是**硬否决**（按定义拒绝任何启用）；旧记录（无 `enabledIntent`）按 `level` 优先于会被记账污染的 `globallyEnabled` 推断 |
+| `_applyPersistentPermanentStates` | 意图真的落到 loader（`include:topo` 收到 `disabled:true`）；顺手把 `moduleName` 修成 loader 那套名字、把意图**迁移**进 `enabledIntent`；幂等；**总开关关闭时一件不碰**；`loader.update` 失败如实进 `failed`；容器条目（有子树）永不碰 |
+| `gpSetPermanentEnabled` | 只写 `enabledIntent`（+ 影子 `globallyEnabled`），**不销毁五档档位**；如实回报 `actualEnabled` / `levelUntouched`；档位=全局禁用时「启用」被拒绝且一个 loader 改动都不发 |
+| **源码守卫** | 拦住三类回流：`gpList` 拿事实回写意图字段、`gpSetPermanentEnabled` 改写档位、客户端常驻插件启停时自动整页刷新 |
+
+### `draft.test.mjs` —— 草图（实时判定 / 不撒谎 / 落盘收窄）
+用户原话：「自动切换视觉模型居然不是实时检查模型表判定的」。本套钉住那条链：
+
+| 组 | 覆盖 |
+|---|---|
+| `liveModelSelection` | 投影 `pending`（用户刚选、还没跑）优先于 `lastUsed`；投影缺失时退事件日志，**晚于最后一条 `request/header` 的 `model/selection` 要采信**；再退宿主默认模型；全空返回空路由且不抛错 |
+| `modelAcceptsImages` | 只认模型表 `inputModalities` 含 `image`；llm 缺失 / 模型表读失败 → `images:false` 且 `known:false`（宁可退回存 PNG，也不要发送时才被拒） |
+| `draftSupport` | 实时路由 + 模型表 + 附件白名单合成结论；原因里带真实模态表 / 白名单问题 |
+| `draftSave` | 合法 PNG 落盘、相对路径正确；非 PNG / 缺数据被拒；**外部 `dir` 被忽略并如实回报**；同名不覆盖 |
+| **源码守卫** | 客户端不得复用挂载那一刻的 `support`（否则画布开着时换模型看不到） |
+
+### `dlt-host.test.mjs` —— DLT 集成的宿主侧
+`lib/dlt-tools.js`（`DltBridge`）把 DLT 的全部宿主侧能力搬进 DET。本套用假宿主
+（`tools` 注册表**同名抛错**、`systemPrompt` 段落表）真跑它的 `sync()`：
+
+| 组 | 覆盖 |
+|---|---|
+| 功能键语义 | 六个键固定有序；总开关关闭时一律不生效 |
+| 同名工具 | 全开注册 **dlt_env / dlt_run / dlt_build / dlt_doc_read / dlt_doc_write / dlt_doc_convert** 六个原名；分项开关只装卸对应块（关 `dltRun` → 4 件，关 `dltDocs` → 剩环境表 + 执行/编译） |
+| 系统提示 | 段落名 `tool:dlt`；环境表清单只在 `dltEnv` 开着时出现；关 `dltRun` 后提示里不再教模型用它 |
+| 总开关 | 关闭后工具与提示**一件不留**，重新打开可原样恢复（可逆） |
+| **撞名容错** | 名字被占 → 如实回报 `conflict`、只跳过那一件、其余照常注册；对手让位后重试补齐六件 |
+| 草图端点 | `dltDraftSave` 真写出合法 PNG（相对路径落在 `<工作区>/.dsh-drafts`）、非 PNG 数据被拒且不留坏文件；`dltDraftSupport` 在没有 LLM 服务时如实回答「不支持图片」 |
+| 回收 | `dispose()` 后宿主注册表里一个不剩 |
+
+### `dlt-integration.test.mjs` —— DLT 集成的客户端装配
+用一个**会答 `detFeatureGet`** 的假 connection 真跑 `apply(ctx)`，并把
+`inject`/`register` 的 disposer 也模拟出来（撤销后从在册集合移除），于是能核对
+「此刻到底挂着什么」：
+
+| 场景 | 期望 |
+|---|---|
+| 全开 | 成本小签（`conversation.chat.turnTail`）、草图按钮（`conversation.input.left`，与 DET 自己的网络权限控件并存 → 该槽 2 个）、右栏预览（`sidebar.right.tab.document` + `documentPreviews` 三个后缀）都在 |
+| 关 `dltCost` | 只少成本小签 |
+| 关 `dltPreview` / `dltDocs` | `documentPreviews.register` 一次都不调 |
+| 关 `dltDraft` | 输入框左行只剩 DET 自己的控件 |
+| 总开关关闭 | DLT 集成登记一个不留（DET 管理器页与 VTD 视图片段按设计保留） |
 
 ## 假 Cordis 上下文的边界（改测试前必读）
 
@@ -103,16 +168,18 @@ node tests\client-load.test.mjs       # 真执行客户端 bundle 并挂载     
 
 跑 `host.test.mjs` 会打印，可用于对比升级前后：
 
-- 宿主走廊：**modern (≥0.1.5)**，`formatVersion=3`
-- typert 端点数量：**76**
-- 被原生接管（新宿主上 DET 卸载自身实现）的功能键：**`file`**（原生 0.1.5 的右侧文件树 + 多类型预览已覆盖）
+- 宿主走廊：**modern (≥0.1.7)**，`formatVersion=4`
+- typert 端点数量：**83**（其中 7 个是 DLT 集成：`dltOffice` / `dltCost` / `dltPricingInfo` / `dltEnvs` / `dltDraftSupport` / `dltDraftSave` / `dltStatus`）
+- 被原生接管（新宿主上 DET 卸载自身实现）的功能键：**`file`**（原生 0.1.7 的右侧文件树 + 多类型预览已覆盖）
 
 ## 还没覆盖的（下一步）
 
-- `lib/client.js` 已覆盖**可装载性 + 信息架构 + 服务名收敛**；仍缺**交互行为**
-  （点击开关的乐观更新与回滚、分组渲染顺序、余额轮询）——需要更完整的 React 桩。
+- `lib/client.js` 已覆盖**可装载性 + 信息架构 + 服务名收敛 + DLT 集成装配**；仍缺**交互行为**
+  （点击开关的乐观更新与回滚、分组渲染顺序、余额轮询、草图画的指针事件与画布导出）——需要更完整的 React 桩与 DOM。
 - `lib/global.js`（全局插件库五档门禁，安全相关）、`lib/mda.js`、`lib/vtd/index.js`、
   `lib/ds.js`（定价页解析）尚无直接断言。
+- `lib/dlt-engine.js`（DLT 引擎副本）的文档/执行路径尚无独立断言：它由 `dlt-host.test.mjs`
+  覆盖注册与端点壳，真实读写仍靠 DSH 运行期验证（`dlt_doc_read` 等模型工具）。
 - 客户端服务名必须收敛到 `CLIENT_SERVICE` / `CLIENT_INJECT` 两张表，**不能**改用
   共享模块：宿主 `dsh-client-modules` 用 lazy CJS 模型 + bundle purity gate 装载，
   相对导入不会被解析（已在宿主源码中确认）。
