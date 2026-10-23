@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.10.1 — 修 `adu_load` 被宿主的「无损 JSON」校验拒收（装载成功却报 invalid output）
+
+真实故障：`adu_load id=alv` 明明把 8 个工具全装上了（`adu_status` 显示已装），调用本身却返回
+`tool "adu_load" returned invalid output: value is not lossless JSON`。
+
+真因：宿主会拿 `JSON.parse(JSON.stringify(out))` 与 `out` 做深比较来校验工具输出；**任何值为
+`undefined` 的字段**都会在序列化时被丢掉，于是"成功装载"被判成非法输出。`adu_load` 的结果行里
+`error: res.error` 在成功路径上正是 `undefined`。
+
+- **修**：结果行只放**有定义**的字段（`error` 仅在失败时出现）。
+- **守卫**：新增 16 条断言 —— 用假桥真跑 5 个元工具的 `execute`，逐条校验输出「无损 JSON」，
+  并钉住「成功结果不得携带 error 键」。这类缺陷以后会在测试里先炸，而不是在用户手里。
+- 同一轮自检顺带确认：ALV 引擎（Pillow/numpy/OpenCV + Windows OCR）在升级后的宿主上可用，
+  `alv` 八件套装卸正常；DSH 侧 junction 仍指向 0.2.0-rc.2（本次 DSH 升级未生效，见下条）。
+- 断言总数：535 → **551**。
+
+> ⚠ 本次自检还发现：上一轮的 DSH 升级器在「停掉宿主」之后被宿主进程树一并杀掉（Windows job
+> object 语义），所以 DSH 仍是 0.2.0-rc.2；已改用 WMI 脱离创建进程的方式重跑升级。
 ## v2.10.0 — ALV 辅助线视觉 · ADU 按需装载 · 失败账本 · 工具预算
 
 这一版回答三个一直存在的问题：

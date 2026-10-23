@@ -119,6 +119,49 @@ ok(clientSrc.indexOf('["alv", "ALV 辅助线视觉"') !== -1, "alv 已归组（�
 ok(clientSrc.indexOf('["adu", "ADU 按需装载"') !== -1, "adu 已归组（架构守卫）");
 
 // ─────────────────────────────────────────────────────────────
+section("元工具输出必须是无损 JSON（undefined 会让整次调用被判 invalid）");
+
+{
+  // 宿主的工具输出校验 = JSON.parse(JSON.stringify(v)) 深比较。任何一个 undefined
+  // 字段都会让「装载成功」被报成 invalid output —— 2.10.0 的 adu_load 就栽在这。
+  const lossless = (value) => JSON.stringify(JSON.parse(JSON.stringify(value))) === JSON.stringify(value);
+  const aduMod = await import("../lib/adu.js");
+  const fakeService = { ctx: { get: () => undefined }, config: {} };
+  // 一个"刚装载完、没有任何错误"的桥：最容易产出 undefined 的那种状态。
+  const fakeBridge = new aduMod.AduBridge(fakeService, {
+    mount: async (id) => ({ ok: true, tools: [`${id}_tool`] }),
+    unmount: async () => ({ ok: true }),
+    status: () => ({ lazy: true, loaded: { alv: true }, toolsByModule: { alv: ["alv_info"] }, groups: ["alv"] }),
+  });
+  fakeBridge._features = { master: true, adu: true };
+  const aduTools = aduMod.buildAduTools(fakeBridge);
+  eq(aduTools.length, 5, "buildAduTools 产出 5 个工具");
+
+  for (const t of aduTools) {
+    const args = t.name === "adu_describe"
+      ? {}
+      : (t.name === "adu_load" || t.name === "adu_unload" ? { id: "alv" } : {});
+    let out;
+    try {
+      out = await t.execute(args, {});
+    } catch (error) {
+      out = { thrown: String(error && error.message ? error.message : error) };
+    }
+    ok(out && out.thrown === undefined, `${t.name} 不抛错`);
+    ok(lossless(out), `${t.name} 的输出是无损 JSON（无 undefined 字段）`);
+  }
+
+  const loadedOut = await aduTools[2].execute({ id: "alv" }, {});
+  eq(loadedOut.ok, true, "adu_load 成功路径 ok:true");
+  eq(loadedOut.loaded, ["alv"], "adu_load 回传已装载模块");
+  ok(loadedOut.results[0].error === undefined, "成功结果不携带 error 键");
+
+  const badOut = await aduTools[2].execute({ id: "nope" }, {});
+  eq(badOut.ok, false, "未知模块如实失败");
+  ok(typeof badOut.error === "string" && badOut.error.length > 0, "失败时给出可读错误");
+}
+
+// ─────────────────────────────────────────────────────────────
 section("引擎契约（需要 python312；缺失则跳过）");
 
 const PY = "C:\\Users\\L2959\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
