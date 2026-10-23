@@ -1,4 +1,4 @@
-# DET 测试
+﻿# DET 测试
 
 DET 有 8400+ 行、16 项能力、**76 个 typert 端点**。历史教训（见 CHANGELOG v2.6.0：
 "关了 DET，dbs / topo 照旧在跑"、"误伤 dlt"）说明：**没有可重复运行的断言，
@@ -20,6 +20,7 @@ node tests\gp-state.test.mjs          # 常驻插件意图模型 + 联动源码�
 node tests\dlt-host.test.mjs          # DLT 集成：工具/提示/端点/容错    —— 37 项断言
 node tests\dlt-integration.test.mjs   # DLT 集成：客户端按开关装配      —— 22 项断言
 node tests\draft.test.mjs             # 草图：实时模型表判定 + 落盘收窄  —— 40 项断言
+node tests\alv-adu.test.mjs           # ALV 八件套 + ADU 模块表 + 真跑引擎  —— 80 项断言
 ```
 
 与草图相关的那个**独立包**（`dsh-sketch-draft`，见 CHANGELOG v2.9.4 第 5 节）

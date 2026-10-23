@@ -4,245 +4,240 @@
 
 <p align="center">
   <b>DET · dsh-essential-tools</b> — the plugin that turns DeepSeek Harness into a usable engineering cockpit.<br>
-  <b>Let the AI drive your own logged-in browser</b> · <b>Branch, edit and retry any conversation</b> · <b>Run / snapshot / roll back real projects</b> · <b>Manage every plugin and every token you spend</b>
+  <b>Let the AI drive your own logged-in browser</b> · <b>Branch, edit and retry any conversation</b> · <b>See a picture precisely, not approximately</b> · <b>Pay only for the tools this turn actually uses</b>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT"></a>
-  <img src="https://img.shields.io/badge/DeepSeek%20Harness-0.1.1--rc.2%2B-blue?style=flat-square" alt="DSH">
+  <img src="https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3%2B-blue?style=flat-square" alt="DSH">
   <img src="https://img.shields.io/badge/type-permanent%20plugin-8c9eff?style=flat-square" alt="type">
-  <img src="https://img.shields.io/badge/version-2.9.4-8c9eff?style=flat-square" alt="version">
-  <img src="https://img.shields.io/badge/tools-25%20model%20tools-7c4dff?style=flat-square" alt="tools">
+  <img src="https://img.shields.io/badge/version-2.10.0-8c9eff?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/tools-44%20model%20tools%20%C2%B7%205%20at%20boot-7c4dff?style=flat-square" alt="tools">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Edge%20%2F%20Chrome-F7DF1E?style=flat-square" alt="platform">
 </p>
 
 <p align="center">
   <a href="#-quick-start-60-seconds"><b>Quick start</b></a> ·
+  <a href="#-alv--seeing-a-picture-precisely"><b>ALV</b></a> ·
+  <a href="#-adu--paying-only-for-what-you-use"><b>ADU</b></a> ·
+  <a href="#-feature-map"><b>Feature map</b></a> ·
   <a href="docs/GUIDE.md"><b>用户指导手册</b></a> ·
   <a href="CHANGELOG.md"><b>Changelog</b></a> ·
-  <a href="docs/SECURITY.md"><b>Security</b></a> ·
-  <a href="docs/DET功能.md"><b>功能总览</b></a>
+  <a href="docs/SECURITY.md"><b>Security</b></a>
 </p>
 
 ---
 
+> **中文一句话**：DET 是 DSH 的永久插件 —— 让 AI 开你自己已登录的浏览器、任意消息开分支改问、跑/快照/回退真工程、管所有插件与每一笔 token；2.10 起再加两件事：**ALV** 给图片造坐标系（栅格·辅助线·边线坐标·本机 OCR），**ADU** 让工具按需装载（启动只装 5 个元工具）。
+
 ## 😤 The problem
 
-If you hack on real code with an AI agent in the loop, you already know these four:
+If you hack on real code with an AI agent in the loop, you already know these five:
 
 | Pain | What everyone does today | What DET does |
 | --- | --- | --- |
 | 🧠 **One wrong turn kills the thread** — you want to re-ask from message #12, not start over | Copy-paste into a fresh chat and lose all context | **VTD**: edit / retry **any** message → a real hidden branch, switch back with `<N>`, and the **workspace code rolls back with you** |
-| 🌐 **The AI can't see or click what you see** — your logged-in dashboards, internal pages, file:// pages | Screenshot, paste, hand-hold, retry | **DET Browser Extension**: the model drives **your already-logged-in Edge/Chrome** through a localhost bridge you gate yourself (off / read / write / on) |
+| 🌐 **The AI can't see or click what you see** — your logged-in dashboards, internal pages, `file://` pages | Screenshot, paste, hand-hold, retry | **DET Browser Extension**: the model drives **your already-logged-in Edge/Chrome** through a localhost bridge you gate yourself (off / read / write / on) |
+| 👁 **"I think the number is 41.00 but the crop is blurry"** — vision models guess coordinates | Re-ask, re-screenshot, hope | **ALV**: grids, rulers, guide lines, edge positions and on-device OCR with per-word boxes — *then* let the model look |
 | 🛠 **Build-run-look-check is a manual loop** | Alt-Tab to the IDE and terminal 40 times an hour | Right toolbar: **▶ run · 🗎 file tree + preview/edit · 🕘 program snapshots & rollback** |
-| 💸 **You have no idea what a session costs** | Find out at the end of the month | Live **balance + per-model price + per-turn cost + peak/off-peak estimate** in the corner |
+| 💸 **You have no idea what a session costs** — or which tools cost you context | Find out at the end of the month | Live **balance + per-model price + per-turn cost**, plus **ADU**: only the tools this turn needs are in the schema budget |
 
-DET (the plugin `dsh-essential-tools`) is the **permanent** DeepSeek Harness plugin that fixes all four — and adds a full **plugin manager**, **conversation memory layer** and **security audit** on top. It lives in your `web` profile, survives restarts, and shows up in **Settings → Plugin inventory**.
+DET (the plugin `dsh-essential-tools`) is the **permanent** DeepSeek Harness plugin that fixes all five — and adds a full **plugin manager**, a **conversation-memory layer**, and a **security audit** on top. It lives in your `web` profile, survives restarts, and shows up in **Settings → Plugin inventory**.
 
-> 🎁 **Zero config:** without project paths, every conversation/token/plugin feature works out of the box. Add paths only when you want ▶ run.
-
----
-
-## ✨ Feature tour
-
-### 🌐 Browser control — *the headline act*
-A real **MV3 extension** (Edge / Chrome) connects to the DSH host over a **localhost-only WebSocket** (`127.0.0.1:9123`) so the model can operate the browser **you are already logged into** — internal tools, dashboards, webmail, local `file://` pages, whatever you have open.
-
-- **Read:** `read_text` · `read_dom` · `screenshot` · `get_url` · `get_title`
-- **Write:** `navigate` · `click` · `fill` · `run`
-- **Six model tools:** `det_browser` plus `web_human_search` (search like a human), `web_insite_search` (find it in your open tabs), `web_act`, `web_inspect`, `web_focus`
-- **You hold the permission dial** — the four-position switch lives in the **extension popup**, and DSH can only read it:
-  | Mode | Model can |
-  | --- | --- |
-  | `关闭 off` | nothing at all |
-  | `只读 read` | read pages (text / DOM / URL / screenshot) |
-  | `只写 write` | navigate, click, fill, run — **but no page content comes back** |
-  | `启用 on` | full read + write |
-- **Double gate:** the host refuses to even start the bridge unless **network permission = tier 4 (use your browser)**; below that, `det_browser` is blocked before it reaches your browser.
-- **Approval aware:** outside Full access mode, browser actions go through DSH's `tools/pre-execute` approval flow; Full access is exempt.
-- Hardened: origin-checked handshake, injection via fixed function + arguments (never `new Function`), only the `tabId` DSH names, and the bridge keeps only the **newest** extension connection so stale MV3 service workers can't eat your commands.
-
-➡️ Setup: [`browser-extension/README.md`](browser-extension/README.md) · deep dive in the [指导手册](docs/GUIDE.md#6-浏览器控制扩展-)
-
-### 🌲 VTD — virtual conversation tree
-Stop throwing conversations away.
-
-- **Edit / retry any user message** → creates a genuine branch child session (`origin: vtd-fork`, hidden from the sidebar). Your original thread is untouched.
-- **`<N>` fork selector** on messages: hop between branches, and DET **snapshots the workspace and restores the target branch's code** for you (message micro-versions).
-- **Streaming branch view:** no fixed 4 s polling — the host signals `generating`, so the tab refreshes at ≈700 ms while tokens flow and ≈2.5 s when idle, auto-scrolls, and shows “正在生成…”.
-- **Product-native rendering:** real user bubbles only, context injections folded away, tool calls/results as cards, reasoning folded, fine-grained Markdown.
-- **Message micro-versions:** `baseline` / `edit` / `retry` / `auto-switch` recorded automatically and restorable.
-
-### 🖥 Right-hand toolbar — project work without leaving the chat
-| | Tool | What it does |
-| --- | --- | --- |
-| ▶ | **Run** | Finds your entry point (`main/entry/run` .py/.cpp, or `.sln/.slnx`), builds with MSBuild, launches the program |
-| 🗎 | **Files** | Workspace file tree (collapsible, counts, indent), click to preview or edit in a modal |
-| 🕘 | **Versions** | Program-level snapshots: manual snapshot / roll back (auto-backup first) / delete — **code files only** |
-| 🧩 | **Plugins** | Jump into the plugin manager / this conversation's plugin switches |
-| 🛡 | **Security** | Audit log and security switches |
-
-MSBuild missing or misconfigured? **Auto-discovery**: `vswhere` → common VS install dirs → `PATH`, cached for 60 s, and `lvalInfo` reports the path actually in use.
-
-### 🧩 Global plugin manager — one library, five levels, two install paths
-- **Library** across the whole process (storage domain `dsh_global_plugins`, survives restarts). Every plugin carries a **level**:
-  `全局启用 always` · `对话AI可自行决定启用 ai-auto` · `对话内AI需审批启用 ai-approve` · `不再会有新启用 frozen` · `全局禁用 disabled`
-- **Bring plugins in:** ① promote a live dynamic Cordis plugin from any running conversation; ② search the store (GitHub / marketplace / leaderboard / radar) with a cached AI summary; ③ paste a manifest URL.
-- **From GitHub two ways:** ① **direct download** (`det_global_plugin_github_direct`); ② **AI reads the source and rewrites an equivalent, safer version** (`det_global_plugin_github_rebuild` → `det_global_plugin_github_save`) — the third-party code is **never executed**, and both paths return virus/vuln warnings.
-- **Resident plugins** (e.g. `dbs`) get a clean **enable/disable** switch that hot-unloads/reloads through the loader, persists across restarts, and offers a **刷新前端** button (`det_global_plugin_set_enabled`).
-- **Intent and fact are stored in *different fields* (v2.9.4).** This used to be one field doing two jobs — `globallyEnabled` was both "your intent" *and* the master switch's bookkeeping, and `gpList` additionally wrote the loader's **actual state** back into it. Three writers overwriting each other is why "disable a resident plugin → it comes back after a restart" kept happening. Now:
-  - the intent lives in its own authoritative field **`enabledIntent`** (optional in the storage schema, so old records still read; they are inferred once and migrated on sight);
-  - the level `全局禁用 disabled` is a **hard veto** (by definition it "refuses any enable"), then `enabledIntent` decides, and only legacy records fall back to `level` (which outranks the bookkeeping-polluted `globallyEnabled`);
-  - **`gpList` never writes fact back into intent.** The loader's truth is only *reported* (`actualEnabled` / `fiberPhase` / `stateMismatch`), never persisted over your choice;
-  - the binary switch **no longer destroys your level** — it used to rewrite `ai-approve` / `frozen` into `always` / `disabled`, which lost your five-level setting for good. "Installed or not" and "who may enable it" are two dimensions and are now stored separately;
-  - the boot-guard / master-switch pause writes a *real* intent (`enabledIntent = false`), so a safety disable is no longer silently undone by the next apply.
-- **Intent vs. fact, told apart.** Entries are matched by **any** of their names (`id`, nested `id`, `options.id`, `options.name` — the profile's `insert` row carries two different names, e.g. `id: dbs` vs `name: 'dsh-bgm-service'`, which used to make "disable" silently impossible). When intent and fact disagree the card says so instead of rewriting your intent, and **立即应用禁用状态** (`gpApplyPermanentStates`) pushes the intent down to the loader **without a restart**. Persisted state is re-applied on boot by a delayed kick + the first session — deliberately **not** `loader.await()`, which deadlocks when called from a plugin's own apply.
-- **Disabling a plugin never reloads your whole page (v2.9.4).** It used to call `window.location.reload()` unconditionally — *even when the host had just reported `applyError`*, i.e. nothing had been applied at all. That is what "turning a plugin off messed up DET's own features and UI" looked like: it reset DET's interface, the settings page you were on, and any unsaved input. Now the panel reports what the loader actually did (`loader 已实时禁用` / `实时未生效：<reason>`) and leaves the refresh to a **刷新前端** button you choose to press.
-- **Boot Guard:** `bootFailLimit` consecutive boot failures (default 2) auto-disable **all** global plugins so a bad plugin can never brick your startup.
-- **In-conversation tools:** `det_global_plugin_list/enable/disable/scan_installed/import_installed/set_enabled/github_direct/github_rebuild/github_save/store_search`.
-
-### 🧭 MDA · CDM · TCT — memory and cost control
-- **MDA (Mixing Dialogue Agent) layering:** `native` / `workspace` group / `model` group (collapsible tree from the sidebar `🔀 MDA 分组`).
-- **CDM (CrossDialogueMemory):** `cdm_list` / `cdm_search` (workspace-scoped by default, `cross=true` to escalate) / `cdm_read` — retrieve what you already worked out in another conversation.
-- **TCT (Temp Chat Tool):** `det_tct` — one prompt, optional preset (`review` / `summary` / `format` / `brainstorm`), typed permissions, one feedback string, **session destroyed, nothing persisted**.
-- **Model collaboration (model group):** `mda_card` writes a model's profile with TCT; `mda_activate` dispatches work to another model (⚠ token-hungry, off by default); `mda_create_no_workspace_agent` spins up a workspace-less agent.
-
-### 📊 DeepSeek balance · pricing · per-turn cost
-- Corner status card: balance from `api.deepseek.com/user/balance`, refreshed every 5 s, expandable to multi-currency detail and **days-until-empty** estimate.
-- **Per-model price chip** parsed from the official pricing page (CNY page first, USD fallback), switching between **peak / off-peak** (Beijing time Mon–Fri 09:00–12:00 & 14:00–18:00 = peak), cached 6 h with last-good fallback.
-- **Per-turn cost** for the conversation you're in.
-- **Key handling:** resolved by the host only (config → DSH credential seam → env var), lives only in a request header — **never written to disk, never logged, never sent to the client**. No MITM proxy, no key ledger, no telemetry. Network touches only `api.deepseek.com` and `api-docs.deepseek.com`.
-
-### 🔧 DLT integration — DLT's features, hosted by DET
-**DET can take over [DLT (dsh-light-tool)](https://github.com/LLYlab/DLT) completely**, so you can run one plugin instead of two. It ships its own copy of DLT's engine (`lib/dlt-engine.js` + `py/`), registers the *same* six model tools — `dlt_env`, `dlt_run`, `dlt_build`, `dlt_doc_read`, `dlt_doc_write`, `dlt_doc_convert` — injects the same environment/doc system prompt, and renders the same three UI pieces itself:
-
-| Piece | Slot | Endpoint |
-| --- | --- | --- |
-| Per-turn cost chip (`本轮 ¥x.xx`, expandable token detail) | `conversation.chat.turnTail` | `dltCost` / `dltPricingInfo` |
-| Right-sidebar Word / Excel / CSV preview | `documentPreviews` + `sidebar.right.tab.document` | `dltOffice` |
-| Sketch button next to the composer's **+** (draw now → image attachment, or PNG path in a text model) | `conversation.input.left` | `dltDraftSupport` / `dltDraftSave` |
-
-- **While DET's master switch is on it declares the takeover** (`subordinateGrants().grants.dlt = true`). DLT then **steps aside entirely**: it registers none of the six tools and no prompt section, and drops its cost chip, balance card, sketch button, previews *and its own settings page*. The single control surface becomes **Settings → DET 管理器 → DLT 集成** (six per-piece switches: `dltDocs` / `dltPreview` / `dltEnv` / `dltRun` / `dltCost` / `dltDraft`).
-- **Reversible, no restart:** turn DET's master switch off (or set `det.subordinate.suppress.dlt = false`) and DLT takes its own features back within ~5 s — DLT re-checks the declaration on boot and every 5 s, DET re-checks on every feature change.
-- **Not a loader pause.** DLT is *not* in DET's global-plugin library and is never hot-unloaded the way library-bound plugins are; the takeover is a functional declaration over `ctx.get('dshEssentialTools').subordinateGrants()`. DLT's own master switch and `switch.json` keep working, so flipping DET off restores exactly the modules you had enabled there.
-- **Balance and pricing stay DET's own** (corner status card + price chip) — DLT's balance card was always the duplicate one; that's why there is no second balance card in the integration.
-- **Sketch import in one line:** the composer's ✏ button (next to **+**) opens a canvas; **导入** gets the drawing into the message **as an image** — if the current model doesn't declare `image` input (`dltDraftSupport`), DET asks the host which models do (`dltVisionRoutes`), switches the session to one of them, attaches the PNG as an image draft, and offers a one-click **切回 <original model>**. No tool call, no "go read the file yourself". Only when no vision model exists at all does it fall back to saving `<workspace>/.dsh-drafts/sketch-*.png` and pasting the relative path — and it says so.
-- **The judgement is genuinely live (v2.9.4).** Two things used to be stale, and both are fixed: the *model* now comes from the session projection's `pending ?? lastUsed` (what you just picked in the model picker, not the last request that already ran), and the *client* re-asks the host on **every** 导入 instead of reusing the answer captured when the canvas opened. So switching models with the canvas open is seen immediately. "Will this model take an image?" is decided **only** by the model table's `inputModalities`; if it can't be read, the answer is conservatively "no" (save the PNG) rather than failing at send time.
-- **Sketch is also its own package: [`dsh-sketch-draft`](https://github.com/LLYlab/DSHSketchDraft)** (v2.9.4). Sketch needs nothing from DET — only the host's `llm` / `sessions` / `sessionProjections` / `attachments` — so it now ships standalone and DET's copy is optional. Exactly one pencil button is ever mounted: DET declares `subordinateGrants().grants.sketchDraft = true` while its `dltDraft` is on, and the standalone package reads that and **steps aside** (it registers no slot at all). Turn off `dltDraft` here (or DET's master switch) and the standalone package takes over automatically — no restart.
-
-### 🛡 Security audit + network permission tiers
-- Optional pre-execution audit: every tool call gets one independent model review; high-risk calls are `deny`-ed and logged (`secCmdAudit`, `secPromptDefense`). ⚠ It costs latency and tokens per call.
-- **Network permission — 5 tiers** (inline dropdown in the input row, persisted as `det.webperm`):
-
-  | Tier | key | Meaning |
-  | --- | --- | --- |
-  | 禁用网络 | `off` | no network at all |
-  | 官方API搜索 | `api` | DeepSeek official API only (balance/pricing need ≥1) |
-  | 搜索API搜索 | `search` | search APIs; generic fetch needs ≥2 |
-  | 静默浏览器仿真 | `silent` | headless browser simulation (read pages) |
-  | 使用用户浏览器 | `browser` | **drives your real browser** (`det_browser` needs exactly this) |
-
-### 🎛 Master switch — stock DSH in one click
-**Settings → DET 管理器** opens with a **master switch** (`det.features.master`, **on** by default) above the per-feature switches.
-
-- **Off = fully native.** DET keeps exactly two things: this manager page and the switch itself. Everything else is unloaded — the ▶🗎🕘🧩🛡 toolbar, the corner balance/cost/MMS card, the network-permission control, the VTD tab and message actions, the MDA sidebar overlay, the *Global plugins* and *MDA* settings entries, all `det_*` / `web_*` model tools and system-prompt injections, the security-audit hook, the local browser bridge, and the sidebar-registry self-check. MDA grouping resets to `native`.
-- **DET-managed plugins are stopped too — and only those.** The scope is the *Global plugins* library: records **bound to a loader entry** (via *scan installed plugins → import*, which writes `moduleName`) that were actually on. Resident ones are hot-unloaded through the loader, dynamic ones have their per-session instances stopped. Plugins that are **not** in the library — e.g. `dlt`, which has its own master switch on its own settings page — belong to themselves and are never touched. (That is a *loader-level* statement: DLT's features can still be hosted by DET through the separate `subordinateGrants()` declaration — see **DLT integration** above — which suppresses DLT from the inside without pausing its fiber.) Container/builtin entries (`cordis:include`, which owns the whole `cordis.yml` subtree) are never disabled, and neither are framework packages (`@deepseek-ai/*`) or DET itself.
-- **Stopping is verified, not assumed.** Every target is re-read from the loader and retried once; anything that refused is reported on the manager page (`⚠ 未能停用` + reason) instead of being claimed stopped. Library records that claim to be resident but are not bound to any loader entry are listed separately as *not stopped* (`det.master.unmanaged`) with a pointer to the import action. The stopped set is snapshotted in `det.master.paused` (with an `applied` flag) and restored when the switch goes back on; a resident plugin's browser half only disappears after a page refresh, so the panel offers a **刷新前端** button rather than reloading the page behind your back.
-- **On** restores all of it — including re-loading the plugins the master switch stopped (resident plugins re-mount, session enable-records are restored so `gpSync` brings them back). Per-feature switches keep their saved values. The switch applies instantly and is persisted — no restart, and turning it off is reversible because every registration is held as a disposer.
-- With the master switch on, the per-feature switches still work as before: turn **plugin manager** off and all global plugins are disabled; turn **MDA** off and grouping returns to native.
-
-### ✅ Indicators follow reality
-The **Global plugins** list never guesses:
-- **Resident plugins** are reported from the host **loader** (the only thing that decides whether a plugin is mounted), so `启用/禁用` is the real state. If DET's stored intent disagrees with the loader, DET corrects the record, marks the card, and also shows the fiber phase (failed / still loading).
-- **Session state** distinguishes *a saved enable-record* from *actually running*: “本会话运行中” only when the run is live, otherwise “已启用记录 · 未运行” or “本会话未打开 · 打开后恢复”. The model-facing `det_global_plugin_list` reports the same actual state.
+> 🎁 **Zero config:** without project paths, every conversation / token / plugin / image feature works out of the box. Add paths only when you want ▶ run.
 
 ---
+
+## 🆕 What 2.10 changed
+
+Three answers to three long-standing problems:
+
+| Problem | Answer |
+| --- | --- |
+| A vision model looks at *a picture*, not *a coordinate system* | **ALV** — 8 tools that build the scaffolding: grid, ruler, guide lines, edge positions, on-device OCR, tiling, annotation, enhancement |
+| Every turn paid for 30+ tool schemas while using one or two | **ADU** — boot with 5 meta tools, mount modules on demand (`adu_list` → `adu_describe` → `adu_load`) |
+| Failures only produced one word: `browser-timeout` | **Per-command budgets + structured failures + a failure ledger** (`_diagPush` → `detHealth` panel) |
+
+A real ALV round trip, on a table screenshot:
+
+```text
+alv_info   → 900×600, RGB, mean 241, dark 3.9%
+alv_edges  → horizontalPositions: y=81(4) y=141(4) y=201(4) y=261(4) y=321(4) y=381(4)
+alv_grid   → cell=60, guides drawn at y=470/540, x=430 → returns gridded copy + toSource mapping
+alv_ocr    → 型号数量 / ALV-100 12 18.50 222.00 / … / TOTAL 471.00   (with per-line boxes)
+alv_annotate→ 2 boxes + 1 cross drawn at exact coordinates, saved and re-read
+```
+
+## 🔍 ALV — seeing a picture precisely
+
+ALV is **geometry, not a better model**: no ML, no network, no API key. You (or the model) state coordinates and thresholds; ALV draws and measures exactly that. Everything is offline; OCR uses the OS engine (`Windows.Media.Ocr`) so results are reproducible and carry word boxes.
+
+| Tool | What it gives you |
+| --- | --- |
+| `alv_info` | Size / mode / DPI / brightness / dark-pixel ratio / 16-bin histogram (optional noise). Decide *whether* to crop, upscale or binarize before wasting a look. |
+| `alv_grid` | **The coordinate system itself**: grid + ruler labels in the margin + **guide lines** at any position (`guides:{horizontal:[470],vertical:[430]}`). Returns a new image and the `toSource` mapping. |
+| `alv_crop` | Exact box crop, optional upscale (2–4×) for small print; omit `box` to auto-trim uniform borders. Returns the mapping back to the original. |
+| `alv_edges` | **Hardcoded edge-position extraction**: Canny + probabilistic Hough → line segments *and* merged row/column positions (`horizontalPositions:[{y,votes}]`), plus an annotated copy labelled `y=` / `x=`. This is how you answer "which row line is where" without eyeballing. |
+| `alv_ocr` | **Hardcoded OCR**: offline, word boxes. `mode=lines` merges glyphs into visual lines and de-spaces CJK (`型 号 数 量` → `型号数量`); `mode=cells` OCRs cell by cell and returns a **table matrix** — feed it the positions from `alv_edges`. |
+| `alv_tile` | Overlapping tiles + upscale, for images with too much text to read in one look. |
+| `alv_annotate` | Draw boxes / lines / arrows / crosses / circles / text at exact coordinates — show the user *where you think it is*, then verify by looking. |
+| `alv_enhance` | Gray, auto-contrast, adaptive threshold, unsharp, upscale (`auto` = all of them). A blurry scan becomes legible before OCR. |
+
+Engine ships in the package: `py/alv.py` (Pillow + numpy + OpenCV on the `python312` environment) and `py/alv_ocr.ps1` (WinRT bridge, pure-ASCII source, UTF-8 JSON out). ALV also injects a system-prompt section telling the model: *don't guess coordinates — build the scaffolding, then look again.*
+
+## 🧩 ADU — paying only for what you use
+
+Registering every tool up front means every request carries every schema. ADU makes loading an explicit protocol:
+
+```text
+boot        → only adu_list / adu_describe / adu_load / adu_unload / adu_status are registered
+adu_list    → the module table: which tools each module brings, its cost and risk, whether it is mounted
+adu_describe id=alv  → sub-capabilities, per-tool purpose, side effects, when to use it
+adu_load    id=alv   → mount (same effect as flipping the switch; tools appear next turn)
+adu_unload  id=alv   → unmount; the following turns get a smaller context back
+```
+
+| Module | Tools it brings | Notes |
+| --- | --- | --- |
+| `plugins` | 19 | global plugin library (5 tiers), GitHub install ×2, CDM, TCT, MDA, MMS — the widest permission surface |
+| `browser` | 1 | `det_browser`; read / write / run, gated by the extension's tier |
+| `web` | 5 | `web_inspect` / `web_act` / `web_focus` / `web_human_search` / `web_insite_search` |
+| `dlt` | 6 | env table, run, build, PDF/Word/Excel/CSV read-write-convert |
+| `alv` | 8 | the image suite above |
+| `security`, `project` | — | always-on listeners / endpoints, not mount units |
+
+Three rules keep it honest:
+
+1. **The module table is the single source of truth** (`lib/adu.js`); the meta tools only validate and report — they hold no state.
+2. **Mounting reuses the very same disposer pipeline** as the master switch and the UI switches, so there is never a "second state". Bookkeeping lives in `_aduGroups` (`id → [disposer]`).
+3. **Turning it off is the escape hatch**: flip `ADU 按需装载` off (or set `aduBoot: "eager"`) and you are back to load-everything at boot. Master switch off removes ADU too.
+
+## 🗺 Feature map
+
+`Settings → DET 管理器` groups the switches by concern. Two new groups in 2.10 (identifier in parentheses):
+
+| Group | Switches |
+| --- | --- |
+| **界面注入** | 文件视图 (`file`) · 运行按钮 (`run`) · 版本控制 (`ver`) |
+| **对话与版本** | VTD (`vtd`) — branch / edit / retry + message micro-versions |
+| **分组与插件** | MDA 分组 (`mda`) · 插件管理 (`plugins`) |
+| **成本优化** | MMS 混合模型 (`mms`) |
+| **DLT 集成** | 文档工具 · 右栏预览 · 环境表 · 执行与编译 · 每轮成本 · 草图导入 (`dltDocs` … `dltDraft`) |
+| **识图与工具预算** 🆕 | ALV 辅助线视觉 (`alv`) · ADU 按需装载 (`adu`) |
+| **安全与审批** | 代码修改审批 · AI 命令审计 · Prompt 攻击防御 (`approve` / `secCmdAudit` / `secPromptDefense`) |
+
+Plus the **master switch** (`master`): off = stock DSH, with only this settings page (and the switch) left behind. Every switch takes effect immediately, persists in `~/.dsh/storages`, and unloads its UI along with its tools.
 
 ## 🚀 Quick start (60 seconds)
 
-**Requirements:** Windows, DeepSeek Harness `0.1.1-rc.2+`, PowerShell, a `web` profile (auto-created on first `dsh web`).
+**Prerequisites** — DSH `0.2.1-rc.3+` (Web profile), Node 22+, Windows for the browser bridge / Office / OCR paths.
 
 ```powershell
 # Option A — installer from the clone (recommended: installs + registers the plugin)
-.\install.ps1 -Profile web
+git clone https://github.com/LLYlab/DSHEssentialTools.git
+cd DSHEssentialTools
+.\install.ps1
 
 # Option B — manual, exactly equivalent
-dsh plugin --profile web add dsh-essential-tools
+#   1) junction the package into the profile's node_modules
+#   2) add an `insert` block for id `dsh-essential-tools` in
+#      ~/.dsh/profiles/web/cordis.patch.yml  (a bundle-layer install does this for you)
+#   3) restart DSH, then check Settings → Plugin inventory
 
 # Option C — straight from GitHub (no npm needed)
 dsh plugin --profile web add github:LLYlab/DSHEssentialTools
 ```
 
-Then restart DSH. `dsh-essential-tools` appears under **Settings → Plugin inventory**, with its own **DET 管理器** section.
+Restart DSH, open **Settings → DET 管理器**, and you should see the switch groups, the DET toolbar on the right edge, and (in ADU mode) five `adu_*` tools in the model's tool list.
 
-> The package declares **`dsh.bundle.patch`** (→ [`cordis.patch.yml`](./cordis.patch.yml)), so
-> any of the three commands above registers the plugin in the profile's bundle layer by itself —
-> **you do not need to hand-edit `cordis.patch.yml`**. The manual `insert` below is only for
-> mounting straight from a source checkout.
+**Browser control** needs two things: install the MV3 extension from `browser-extension/`, then set **网络权限 → 使用用户浏览器** and pick a tier in the extension popup (`off / read / write / on`).
 
-<details>
-<summary>Registering by hand / adding project paths / config reference</summary>
+## 🏗 Architecture
 
-Append to `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`:
-
-```yaml
-- insert:
-    - id: dsh-essential-tools
-      name: 'dsh-essential-tools'
-      # config:                      # optional — only needed for the ▶ run / 🗎 file / 🕘 version tools
-      #   lvalRoot: 'C:\path\to\project'
-      #   srcDir: 'C:\path\to\project\src'
-      #   solution: 'C:\path\to\project\App.slnx'
-      #   msbuild: 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe'  # optional, auto-discovered
-      #   configuration: 'Debug'
-      #   platform: 'x64'
-      #   rollbackTargetDefault: 'minor'
-      #   bootFailLimit: 2           # consecutive boot failures before auto-disabling all global plugins
+```text
+                      ┌──────────────────────── DSH host (Node) ────────────────────────┐
+ cordis.patch.yml ──▶ │  lib/index.js  EssentialToolsService (typert Remote)             │
+   (bundle layer)     │    ├─ VtdStore        conversation tree / micro-versions         │
+                      │    ├─ GlobalPluginStore  5-tier plugin library + source stores   │
+                      │    ├─ MdaStore        grouping / model cooperation               │
+                      │    ├─ BrowserBridge   WS 127.0.0.1:9123 ◀── MV3 extension         │
+                      │    ├─ DltBridge       6 dlt_* tools → py/dlt_docs.py             │
+                      │    ├─ AlvBridge       8 alv_* tools → py/alv.py + alv_ocr.ps1    │
+                      │    └─ AduBridge       5 adu_* meta tools → _aduGroups bookkeeping │
+                      │       adapt.js (service names) · host.js (capability probe)      │
+                      └───────────────────────────────┬─────────────────────────────────┘
+                                                      │ typert endpoints (~80 methods)
+                      ┌───────────────────────────────▼─────────────────────────────────┐
+                      │  lib/client.js  (web bundle, no relative imports)               │
+                      │   toolbar · VTD tabs · sidebar registry · status box · panels   │
+                      └─────────────────────────────────────────────────────────────────┘
 ```
 
-Leave `config` empty and everything except the project tools still works.
+Design rules that this repo actually enforces with tests:
 
-</details>
+- **One table, one owner.** Feature keys live in `normalizeFeatures`; their labels/grouping live in `DET_FEATURE_GROUPS`; the client-structure suite fails if they drift apart (`每个功能键恰好归组一次`).
+- **Never break the whole for one part.** Every registration goes through `safe(...)` + disposers; a single failing sub-capability cannot take the plugin down.
+- **Facts vs. intent.** `globallyEnabled` is an *intent* record; the loader is the *fact*. They are reported side by side and never overwrite each other.
+- **Loadable modules are not a second state.** ADU mounts through the same disposers the master switch uses.
+- **Diagnostics never throw.** `_diagPush` and every probe is try/catch-wrapped; a diagnostic bug must not become an outage.
 
-<details>
-<summary>Optional: enable the browser extension</summary>
+## 🔒 Permission & safety model
 
-1. `edge://extensions` (or `chrome://extensions`) → enable **Developer mode** → **Load unpacked** → pick `browser-extension/`.
-2. In DET, set **network permission = 使用用户浏览器 (tier 4)**.
-3. Click the extension icon and pick a mode — start with **只读** and move up only when you need it.
-4. Ask the model to work on your open tab; watch the **浏览器控制** status block in DET.
-
-</details>
-
-<details>
-<summary>v1 dynamic loading (development only)</summary>
-
-`cordis_define` with `plugin/host.js` + `plugin/client.js`, then `cordis_run`. v2 (npm) is the supported path.
-
-</details>
-
----
-
-## 📚 Documentation
-
-| Doc | What's inside |
+| Layer | Control |
 | --- | --- |
-| **[docs/GUIDE.md](docs/GUIDE.md)** | 🧑‍🏫 **用户指导手册** — install, first-run walkthrough, every feature step by step, permission model, FAQ, troubleshooting, uninstall |
-| [docs/DET功能.md](docs/DET功能.md) | Feature inventory: 25 model tools, 75 endpoints, 8 UI slots, storage domains, permission tiers |
-| [docs/DET修改.md](docs/DET修改.md) | Change/dev log: what was changed and why |
-| [docs/DET运行思路.md](docs/DET运行思路.md) | Architecture and runtime flow |
-| [docs/SECURITY.md](docs/SECURITY.md) | Security design, five-dimension review, known boundaries, mitigations |
-| [CHANGELOG.md](CHANGELOG.md) | Release history |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Implementation-level architecture |
+| **Network** | 5 tiers (off → official API → fetch → **use your browser**). DET gates its own requests; the tier is also written into the model's system prompt. |
+| **Browser** | Extension-side tiers `off / read / write / on`, enforced **in the extension** (DSH is read-only towards it). Write actions are refused in `read` mode; `write` mode strips page content from replies; `run` needs `on`. |
+| **Code changes** | `approve` requires a diff preview + approval before saving or rolling back. |
+| **Audit** | `secCmdAudit` runs an independent model audit on tool calls; `secPromptDefense` screens inputs (including command output) for injected instructions. |
+| **Global plugins** | 5 tiers — `always` / `ai-auto` / `ai-approve` / `frozen` / `disabled`; `frozen` and `disabled` refuse every new enable, including the user's. Global plugin code runs with **the host's real permissions** — that is why tier control and the code scanner exist. |
 
----
+## 🩺 Troubleshooting
 
-## 🔒 Security in one paragraph
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `browser-timeout` | Page too heavy for the command budget, or the extension is stuck | Retry with a larger `timeoutMs`; prefer `read_text` over `screenshot`; `web_focus` the tab first (background tabs are throttled by the browser) |
+| `browser-disconnected` | Extension socket dropped mid-command | Reload the extension, then retry — DET now fails fast instead of waiting 45 s |
+| `ext-mode-off` / `ext-read-denied-in-write-mode` | Extension tier | Open the extension popup and raise the tier |
+| Tools missing after a restart | ADU is in lazy mode | `adu_list` → `adu_load <module>`, or turn `ADU 按需装载` off in DET 管理器 |
+| `alv_ocr` returns empty text | Image too small / low contrast | `alv_crop scale=2..3` then `alv_enhance mode=auto`, then OCR again |
+| ALV errors with "引擎不存在" | Package tree incomplete | Reinstall; `lib/alv.js` resolves `py/alv.py` relative to the package root |
+| A permanent plugin "comes back" after restart | Intent vs. layer mismatch | Disable it in the **patch layer** (`disabled: true`) — the runtime flag alone is re-applied by the next composition |
+| Everything vanished | Master switch off | Settings → DET 管理器 → 总开关 |
 
-Plugin code runs with the **real permissions of the DSH process** — that is not a sandbox, so only enable code you trust (DET says this loudly before every install). What DET does add: SSRF protection on every host-side fetch (http/https only, no credentials in URL, private/loopback/metadata addresses rejected, **DNS re-checked after resolution** to stop rebinding, manual redirects re-validated per hop, 5-hop cap), 15 s timeouts and `Content-Length` pre-checks, suspicious-code scanning with commit-SHA provenance on store installs, quoted `cmd.exe` argv to kill argument-splitting/injection, browser bridge bound to `127.0.0.1` with origin-checked handshake and an extension-side gate the host cannot override, approval routing for browser actions outside Full access, and a credential path that never persists your API key. The blacklist scanner is a **hint, not a boundary**; the real boundary is your approval.
+The **健康与失败诊断** panel (Settings) shows boot health, plugin-library intent↔fact mismatches, DLT/ALV/ADU mount facts, and the recent failure ledger.
+
+## 🧪 Tests
+
+11 suites, **534 assertions**, no profile / no network / no server required:
+
+```powershell
+node tests\unit.test.mjs              # pure functions + Config neutrality      128
+node tests\host.test.mjs              # real host-half mount (fake Cordis ctx)   60
+node tests\adapt.test.mjs             # service access layer + architecture guard 23
+node tests\client-structure.test.mjs  # information architecture + token guard   47
+node tests\client-load.test.mjs       # executes the client bundle for real      17
+node tests\dlt-host.test.mjs          # DLT integration: tools/prompt/endpoints  37
+node tests\dlt-integration.test.mjs   # client mounting matrix                    22
+node tests\draft.test.mjs             # sketch draft: live model judgement        40
+node tests\gp-state.test.mjs          # permanent-plugin intent model + guards    71
+node tests\pause.test.mjs             # master-switch pause/resume scope          10
+node tests\alv-adu.test.mjs           # ALV/ADU contracts + real engine runs      79
+```
+
+Run them **from inside the package** (ESM resolves the real `@deepseek-ai/*` peers there). Exit code `0` = all green.
+
+## 📚 Docs
+
+- [`docs/GUIDE.md`](docs/GUIDE.md) — 用户指导手册：逐功能详解、权限模型、扩展装载、FAQ
+- [`docs/SECURITY.md`](docs/SECURITY.md) — 威胁模型与边界
+- [`docs/DET功能.md`](docs/DET功能.md) — 功能总览
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — 内部结构、约定与测试矩阵
+- [`CHANGELOG.md`](CHANGELOG.md) — 每一版的「为什么」
 
 ## 🤝 Contributing
-Issues and PRs welcome at [LLYlab/DSHEssentialTools](https://github.com/LLYlab/DSHEssentialTools). The browser extension must be tested by loading it unpacked; the npm package never ships it (`.npmignore`).
+
+Issues and PRs welcome. Two house rules: **every new switch must be grouped** (the structure test will fail otherwise), and **every claim in the UI must have a fact behind it** — if the panel says "applied", something must have read it back.
 
 ## License
-[MIT](LICENSE) © 2026 L2959159224
+
+MIT — see [LICENSE](LICENSE).

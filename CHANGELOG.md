@@ -1,5 +1,88 @@
 # Changelog
 
+## v2.10.0 — ALV 辅助线视觉 · ADU 按需装载 · 失败账本 · 工具预算
+
+这一版回答三个一直存在的问题：
+
+1. **模型说"我看不清这张图"时，它其实缺的是坐标系。**（→ ALV）
+2. **每一轮只用到一两个工具，却要为三十多个工具的 schema 付预算。**（→ ADU）
+3. **失败了只有一句 `browser-timeout`，攒不下能用来优化的记录。**（→ 失败账本 + 按命令预算）
+
+### 1) ALV — Aided Line Vision（辅助线视觉，8 个 `alv_*` 工具）
+
+视觉模型看到的是"一张图"，不是"一个坐标系"。当任务变成"这张表第 3 行错了没""这条线在哪一列结束""(1130,740) 印的料号是什么"，需要的不是更聪明的模型，而是**脚手架**。ALV 用纯几何把这些脚手架造出来 —— 无 ML、无网络、无 API Key。
+
+| 工具 | 干什么 |
+| --- | --- |
+| `alv_info` | 尺寸/模式/DPI/亮度/暗像素比例/16 段直方图（可选噪声估计）。据此决定要不要裁剪放大或二值化。 |
+| `alv_grid` | **坐标系本体**：栅格 + 四周坐标标尺 + 任意位置的**辅助线**（`guides:{horizontal:[470],vertical:[430]}`），返回整张新图与换算说明。 |
+| `alv_crop` | 按 box 精确裁剪、放大（小字必须先放大再 OCR）；不给 box 就自动裁掉四周均匀空白。返回 `toSource` 换算。 |
+| `alv_edges` | **硬编码边缘位置提取**：Canny + 概率霍夫 → 线段坐标 + **合并后的行/列边线位置**（`horizontalPositions:[{y,votes}]`），并输出标好 `y=` / `x=` 的副本。 |
+| `alv_ocr` | **硬编码 OCR**：走 Windows 本机 OCR（离线、带逐词包围盒）。`mode=lines` 按视觉行合并并自动去掉中文词间空格；`mode=cells` 逐格识别直接产出**表格矩阵**。 |
+| `alv_tile` | 带重叠切块 + 放大，一张大字图分块喂给模型。 |
+| `alv_annotate` | 按坐标画 box/line/arrow/cross/circle/text —— 把"我算出来的位置"精确画给用户看。 |
+| `alv_enhance` | 灰度/自动对比度/自适应二值化/锐化/放大（`mode=auto` 全上）。 |
+
+引擎随包：`py/alv.py`（Pillow + numpy + OpenCV，跑在 python312 环境）+ `py/alv_ocr.ps1`（Windows.Media.Ocr 的 WinRT 桥，纯 ASCII 源文件，输出 UTF-8 JSON）。**全程离线**，OCR 语言跟随系统（本机 zh-Hans-CN）。
+
+一个真实回合长这样：
+
+```
+info  → 900×600, 暗像素 3.9%
+edges → horizontalPositions: y=81(4) y=141(4) y=201(4) y=261(4) y=321(4) y=381(4)
+ocr   → 型号数量 / ALV-100 12 18.50 222.00 / … / TOTAL 471.00
+```
+
+ALV 同时注入一段系统提示，告诉模型"别猜坐标，先造脚手架，再 read_image 亲眼看"。
+
+### 2) ADU — AutoDETUsage（按需装载，5 个 `adu_*` 工具）
+
+旧行为是**一次性**把 30+ 个模型工具塞进上下文：每次请求都要携带全部 schema，工具越多模型越容易挑错，而绝大多数回合只用得到一两个。
+
+ADU 把"装载"变成显式协议：
+
+```
+启动   → 只注册 adu_list / adu_describe / adu_load / adu_unload / adu_status
+adu_list          → 模块表：每个模块会带来哪些工具、代价多少、风险是什么、装没装
+adu_describe id=… → 深查：逐个子能力、每个工具的用途、副作用、建议
+adu_load id=…     → 真正装载（等价于打开对应功能开关，下一轮生效）
+adu_unload id=…   → 卸下，让后面的上下文重新变轻
+```
+
+模块（装载单元）：`plugins`（全局插件库 + CDM + TCT + MDA + MMS，19 个工具）、`browser`、`web`、`dlt`、`alv`；`security` / `project` 标为**常驻**（纯监听 / 端点，不在装载清单里）。
+
+三条纪律：
+
+- **模块表是唯一事实源**（`lib/adu.js`），元工具只做校验与转述，不自己持有状态。
+- **装卸走同一根 disposer 管线**：与总开关、与 UI 上点开关完全一致，不会出现"两套状态各说各话"。状态记账在 `_aduGroups`（`id → [disposer]`）。
+- **关掉即回到全装**：`adu` 开关或配置 `aduBoot: "eager"` 是最快的退路；总开关关闭时 ADU 一起撤走（完全原生）。
+
+设置页新增「ADU · 按需装载(模块表)」：逐模块「装载/卸下」+「全部装载/全部卸下」，并显示当前模式与已装模块。
+
+### 3) 失败账本 + 按命令超时（修 `browser-timeout` 只能盲重试）
+
+数据来自一次真实失败：对一个 5000+ 节点的重页面调 `screenshot`，旧实现所有命令共用 **15s** 常数 → 必然超时，而错误只有一句 `browser-timeout`：
+
+- **按命令给预算**（`lib/browser.js` 的 `CMD_TIMEOUTS`）：`screenshot` / `run` 45s、读类 25s、`click`/`fill` 20s、`list_tabs` 10s；调用方仍可传 `timeoutMs` 覆盖（`det_browser` 新增该参数）。
+- **结构化失败**：超时结果带上 `cmd` / `waitedMs` / `tabId` / `hint`，其中 `hint` 直接给下一步（换 `read_text`、先 `web_focus`、重启扩展…）。
+- **断连即刻结算**：扩展 socket 关闭时把在途命令立刻判为 `browser-disconnected`，不再静默等满 45s。
+- **失败账本 `_diagPush`**：最近 200 条（kind/what/message/at），由 ALV/ADU/浏览器失败路径写入；新增端点 `detHealth` 汇总**已有事实**（启动健康、插件库「意图↔事实」一致性、DLT/ALV/ADU 装载事实、失败账本），设置页新增「健康与失败诊断」面板。
+
+### 4) 前端：信息架构与可用性
+
+- 新增分组「识图与工具预算」（`alv` / `adu` 两个开关），分组样式改为左侧 2px 强调条 + 轻底色，长列表里能一眼收拢（仍只用宿主 `--dsw-alias-*` token，架构守卫会拦硬编码色值）。
+- 每个分项开关现在是真正的 **`role="switch"` + `aria-checked` + Tab/Space/Enter**：原先只有 `onClick`，键盘用户走不到这些开关。
+- 新增三块面板：ADU 模块表、ALV 状态（引擎/OCR 桥是否在位 + 工具胶囊）、健康与失败诊断。
+- ADU 模块行给"已装/未装/常驻"三色徽标、代价与风险一行说明，装/卸按钮就地生效。
+
+### 5) 清洁与测试
+
+- 清掉仓库里 **28 个 `.bak-*` 备份 + 1 份过期发布说明**（10.31 MB → 6.38 MB）；`.npm-cache/` 与 `*.bak*` 本来就在 `.gitignore` 里，这次是物理删除。
+- 新增 `tests/alv-adu.test.mjs`（**79 条断言**）：模块表契约、开关语义、源码守卫（ALV/ADU 必须真的被 `index.js` 导入并走 `_aduGroups` 记账、`_loadExtension` 在按需模式下必须提前返回）、客户端面板与归组、**真跑引擎**（info/grid/edges/annotate/crop/未知 op/缺图）。
+- 测试产物改写临时目录（测试不再往仓库里留图）。
+- 全量：unit 128 · host 60 · adapt 23 · client-structure 47 · client-load 17 · dlt-host 37 · dlt-integration 22 · draft 40 · gp-state 71 · pause 10 · **alv-adu 79** = **534** 断言全绿。
+- 依赖区间抬到 `^0.2.1-rc.3`（DSH 0.2.1 起预发布版才算在区间内；此前 `^0.2.0-rc.2` 按 semver 预发布规则并不匹配 0.2.1-rc.x）。仍未声明 `engines.dsh`，但 `^0.2.1-rc.3` 已让声明层与实测宿主一致。
+
 ## v2.9.4 — 修好「DET 与它管理的插件」的联动；草图判定改成真·实时；草图拆成独立包
 
 - **依赖对齐 DSH 0.2**：`@deepseek-ai/dsh-typert-protocol` 由 `^0.1.7-rc.2` 抬到 `^0.2.0-rc.2`，并补齐此前**漏声明**的运行时依赖 `@deepseek-ai/dsh-tools` / `dsh-llm` / `dsh-credentials` / `dsh-storage-domain` / `dsh-session`（统一 `^0.2.0-rc.2`）—— 这五个此前只靠在运行时从宿主树里解析（junction + 运行时解析模式），声明层是缺的。代码本身无需适配 —— 0.2.0-rc.2 下 10 个测试文件全绿（约 449 条断言），升级后的真实宿主里 DET 工具、端点与 `.dset-*` 客户端界面均已实测渲染。

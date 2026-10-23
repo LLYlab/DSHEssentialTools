@@ -319,3 +319,74 @@ function apply(ctx, config) {
 - **耗尽时间估算（`_dsUsageEstimate`，10 分钟缓存；价格未加载时懒加载一次）**：会话清单（durable ∪ live，按更新时间倒序取前 20）→ 每会话读日志（live 或 `sessionPersistence.load`）取 `assistant/message` 的 `data.usage`（与 token-meter 同源采样、无重复计数；input+cacheWrite 按缓存未命中价、cacheRead 按命中价、output 按输出价）→ 近 7 天窗口优先、近 30 天兜底 → 定价用「当前默认模型（`agentDefaultModel` 且 `deepseek-official`，否则最低价档）× 错峰单价」→ `daily` 日均费用 → 与价格同币种的余额桶匹配给出 `daysLeft`（币种不匹配 → `mismatch` 提示，不做汇率换算）。估算假设随响应返回并在 UI 注明。
 - **客户端**：模块级 `dsState`/`useDs` store（apply 内 `dsFetch` 装载端点调用，60s 余额轮询 + `connection/reset` 刷新）；`shell.overlay`（order 300）右下角余额悬浮卡（点击展开明细/刷新 + **预计耗尽天数**区块，零余额跳过、多币种 `¥/$` 分列）；`conversation.input.right`（order 150，模型选择右侧座位）单价芯片：读 `ctx.modelDirectories.directoryFor(sid).store` 当前 `{provider, model}`，仅 `deepseek-official` 且命中价格表时显示（**币种随价格表：CNY `¥` / USD `$`**），按峰值/错峰择一，悬停展示完整价格表 + note + 更新时间。
 - **参考与剔除**：参考 micc99/deepseek-balance-monitor、tunggian/DeepSeekBalanceMonitor 的余额接口/解析/错误处理做法；去除项目中的 MITM 本地代理、key 哈希台账、明文密钥存储与任何遥测/上报（见 README）。
+
+---
+
+## 11. v2.10 扩展：ALV（辅助线视觉）· ADU（按需装载）· 失败账本
+
+### 11.1 新增模块与归属
+
+| 文件 | 角色 | 依赖方向 |
+| --- | --- | --- |
+| `lib/alv.js` | ALV 桥：8 个 `alv_*` 工具 + 系统提示段落 + 引擎调用 | `→ dlt-engine.runInEnvironment`（复用环境表，不新建进程层） |
+| `py/alv.py` | ALV 引擎：crop / grid / edges / ocr / tile / annotate / enhance / info | 只依赖 Pillow + numpy + OpenCV |
+| `py/alv_ocr.ps1` | Windows OCR 桥（WinRT）：图片 → `{ok,text,scale,words[{x,y,w,h}]}` | 只依赖系统 PowerShell + 系统语言包 |
+| `lib/adu.js` | ADU：模块表（唯一事实源）+ 5 个元工具 + 参数校验 | 通过注入的 runtime 回调调用 service 的装卸管线 |
+
+三条硬约束（都有测试守着）：
+
+1. **ADU 不持有状态。** `_aduGroups`（`id → [disposer]`）在 `index.js`，`lib/adu.js` 只描述与转述。
+2. **ALV 不碰业务语义。** 引擎只做几何/像素运算，工具层只做路径解析与文案；"要不要用 ALV"由模型判断。
+3. **OCR 走系统引擎。** 不引 tesseract、不联网、不在仓库里塞模型权重。
+
+### 11.2 ALV 坐标约定
+
+所有对外坐标都是**原图左上角为原点**的像素坐标。会改变画布的工具必须回传 `toSource`：
+
+| 工具 | 变换 | `toSource` |
+| --- | --- | --- |
+| `alv_grid` | 四周各加 `margin` 像素边距 | `{x:-margin, y:-margin, scale:1}` |
+| `alv_crop` | 裁 + 可缩放 | `{x,y,scale}` |
+| `alv_edges` | 可先放大再检测（检测完坐标已除回原尺度） | `scale` 字段 + 位置已是原图坐标 |
+| `alv_ocr` | 可先放大再 OCR（词框已除回原尺度并加上 box 偏移） | 无（已是原图坐标） |
+
+### 11.3 ADU 装载管线
+
+```
+adu_load(id) ──▶ service._aduMount(id)
+                    ├─ 非按需模式 → {ok:true, already:true}（不重复注册，避免撞名）
+                    ├─ 已在 _aduGroups → already:true
+                    └─ _aduGroupRegister(id)()
+                          ├─ plugins → registerGlobalPluginTools + 重同步（MMS 归这儿）
+                          ├─ browser → registerBrowserTools + registerWebPermPrompt
+                          ├─ web     → registerWebTools
+                          ├─ dlt     → DltBridge.sync(features)
+                          └─ alv     → AlvBridge.sync(features)
+                       结果 disposer 数组存入 _aduGroups[id]
+```
+
+`_unloadExtension()` 与插件卸载都会先 `_aduUnmountAll()`，所以"先开总开关再关"不会留下半装的模块。
+
+### 11.4 失败账本
+
+`service._diagPush(kind, what, message)` 只保留最近 200 条（内存，不落盘、不上报）。写入点：ALV 引擎失败、ADU 装卸失败、`browserExec` 失败（含 `waitedMs`）。`detHealth` 把它与**已有事实**（`global.getBootHealth()`、`gpMasterState` 的 unmanaged/mismatch、三个桥的自报状态）一起汇总给面板。
+
+### 11.5 浏览器命令预算
+
+`lib/browser.js` 的 `CMD_TIMEOUTS` 是唯一来源：`screenshot`/`run` 45s、读类 25s、`click`/`fill` 20s、`list_tabs` 10s，默认 20s；`det_browser` 的 `timeoutMs` 可覆盖。断连时 `_failPending("browser-disconnected")` 立刻结算在途命令 —— 修掉"扩展掉了但工具静默等满 45s"。
+
+### 11.6 测试矩阵（v2.10）
+
+| 套件 | 断言 | 守着什么 |
+| --- | --- | --- |
+| `unit` | 128 | 纯函数 + Config 中性默认值 |
+| `host` | 60 | 真装载宿主半区（假 Cordis ctx） |
+| `adapt` | 23 | 服务接入层 + 裸 `ctx.get("字面量")` 守卫 |
+| `client-structure` | 47 | 每个功能键恰好归组一次；分组样式只用宿主 token |
+| `client-load` | 17 | 真执行客户端 bundle 并挂载 |
+| `dlt-host` | 37 | DLT 六工具 / 提示 / 端点 / 容错 |
+| `dlt-integration` | 22 | 客户端按开关装卸矩阵 |
+| `draft` | 40 | 草图：实时模型判定 + 落盘收窄 |
+| `gp-state` | 71 | 常驻插件意图模型 + 源码守卫 |
+| `pause` | 10 | 总开关停用/恢复的真实范围 |
+| `alv-adu` | 80 | 模块表契约、开关语义、源码守卫、**真跑引擎** |
