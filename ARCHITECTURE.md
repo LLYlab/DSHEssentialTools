@@ -390,3 +390,31 @@ adu_load(id) ──▶ service._aduMount(id)
 | `gp-state` | 71 | 常驻插件意图模型 + 源码守卫 |
 | `pause` | 10 | 总开关停用/恢复的真实范围 |
 | `alv-adu` | 80 | 模块表契约、开关语义、源码守卫、**真跑引擎** |
+
+### 11.7 v2.11：粘性装载 · adu_rememory · 模式切换
+
+**粘性装载**（"ADU 不主动卸载"）
+
+| 环节 | 实现 | 不变量 |
+| --- | --- | --- |
+| 装载 | `_aduMount(id)` → 注册组 → 记账 `_aduGroups[id]` → `_aduPersistMounts()` | 记账与持久化**同时**发生 |
+| 持久化 | `det.adu.mounted`（storage settings，字符串数组） | 只写"可装载且非 always"的 id |
+| 恢复 | `_aduRestoreMounts()`（`_loadExtension` 按需分支里调用） | 幂等：已装的返回 `already` |
+| 卸载 | `_aduUnmount(id)` → **先 dispose bridge（dlt/alv）** → 再跑 disposer → 清账本 → 写回 | 账本清空 = 工具真的消失 |
+
+v2.11.0 的两个真实缺陷（都由行为测试抓出，现已回归覆盖）：
+
+1. `_aduMountedSetting()` 里用了 `aduModule` 却忘了 import —— ReferenceError 被
+   `catch {}` 吞掉，于是"粘性恢复永远返回空"。现在 catch 会写进失败账本（`_diagPush`），
+   不再静默。
+2. `dlt`/`alv` 的工具注册在各自 bridge 内部，`_aduGroups[id]` 是**空数组**（truthy），
+   旧代码因此跳过 `bridge.dispose()` —— 表现为"账本说卸下了，工具其实还在"。
+   现在卸载先按 key dispose bridge，再跑 disposer。
+
+**adu_rememory**：索引的唯一装配点是 `aduToolIndex()`，数据源是 `ADU_TOOL_INDEX` +
+`ADU_SELF_INDEX`。测试钉住两条覆盖率不变量：模块表里**每个**工具必须有索引条目；
+索引里**不得**出现已不存在的工具。
+
+**模式切换**：`_applyLoadMode(features)` 比较 `_aduLazyAtLoad` 与当前判据，
+变化时 `_unloadExtension()` → `_loadExtension()`。没有这一步，`_extLoaded` 守卫会让
+"按需 ↔ 全装"的切换在重启前完全不生效，并让两套注册互相撞名。

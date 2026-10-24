@@ -26,6 +26,7 @@
 9. [故障排查](#9-故障排查)
 10. [卸载与回滚](#10-卸载与回滚)
 11. [速查表](#11-速查表)
+12. [ADU 按需装载 与 ALV 辅助线视觉](#12-adu-按需装载-与-alv-辅助线视觉)
 
 ---
 
@@ -481,3 +482,41 @@ dsh plugin --profile web add dsh-essential-tools@2.3.5   # 指定版本即可回
 ---
 
 需要更底层的内容：功能与端点清单见 [DET功能.md](DET功能.md)，改动记录见 [DET修改.md](DET修改.md)，运行结构见 [DET运行思路.md](DET运行思路.md)，安全边界见 [SECURITY.md](SECURITY.md)。
+
+---
+
+## 12. ADU 按需装载 与 ALV 辅助线视觉
+
+### 12.1 ADU：先给表，再装载，装上就不卸
+
+DET 有 45 个模型工具。全塞进上下文既贵又容易让模型挑错，所以默认走**按需装载**：
+
+1. **启动**只有 6 个 `adu_*` 元工具。
+2. `adu_list` 看模块表（每个模块带哪些工具、代价、风险、装没装）。
+3. `adu_describe id=alv` 深查某个模块的子能力与副作用。
+4. `adu_load id=alv`（或 `all`）真正装载 —— **工具从下一轮开始出现**。
+5. 装载是**粘性**的：写进 `det.adu.mounted`，重启后自动装回；ADU 不会因为"闲置/切会话"去卸你。
+
+> 忘了自己有哪些工具？`adu_rememory`（可带 `id`、`full`）会把 45 条工具压成一张
+> 「`名字(参数)` — 一句话」的索引表重新注入。**不重新装载、也不额外占工具 schema 预算** ——
+> 长对话被压缩之后，这是恢复"局部记忆"的正确姿势。
+
+想回到"一上来全装"：DET 管理器里关掉 **ADU 按需装载**（即时生效），或在配置里写 `aduBoot: "eager"`。
+
+### 12.2 ALV：别让模型猜坐标
+
+模型看图是「看一张图」，不是「看一个坐标系」。ALV 给图**造脚手架**，再让模型亲眼看：
+
+| 场景 | 用法 |
+| --- | --- |
+| 不知道图多大、要不要放大 | `alv_info` 先体检（尺寸/亮度/暗像素比例/直方图） |
+| 要说出"第 3 行那条线在 y=?" | `alv_edges` → `horizontalPositions:[{y,votes}]`（标签画在左侧边栏，不压正文） |
+| 要看某块小字 | `alv_crop scale=2~3` → `alv_enhance mode=auto` → `alv_ocr` |
+| 表格要转成矩阵 | `alv_edges` 拿行列位置 → `alv_ocr mode=cells cells=[…]` |
+| 图太密一次看不清 | `alv_tile cols=2 rows=2`（带重叠）后逐块 `read_image` |
+| 要指给用户看 | `alv_annotate` 画 box/line/arrow/cross/circle/text（坐标即原图像素坐标） |
+| 要验证对齐/平直 | `alv_grid guides:{horizontal:[470],vertical:[430]}` 画辅助线 |
+
+全程离线：图片运算走 python312（Pillow + numpy + OpenCV），OCR 走系统引擎
+（Windows.Media.Ocr，zh-Hans-CN），不联网、不传图、不需要 API Key。
+产物落在 `<DSH_HOME>/det/alv`（可用配置 `alvCacheDir` 改）。

@@ -1,5 +1,37 @@
 # Changelog
 
+## v2.11.1 — 修「粘性装载其实没生效」+「卸载是假卸载」；ALV 边线标签改画在边栏
+
+两条都是 v2.11.0 里**静默失效**的缺陷，靠新加的行为测试（真服务实例 + 会回收的假 tools.register）抓出来的：
+
+### 1) 粘性恢复：`aduModule` 忘了 import，ReferenceError 被吞
+
+`_aduMountedSetting()` 用 `aduModule()` 过滤已装模块，但 `lib/index.js` 没有导入它。
+于是每次读 `det.adu.mounted` 都在 `catch {}` 里炸掉、返回空数组 —— **重启后永远不会装回任何模块**，
+而界面上一切正常（这正是最坏的一种坏）。修：补 import；并且 catch 现在写进失败账本
+（`_diagPush("adu", "read det.adu.mounted", …)`），不再静默。
+
+### 2) 卸载是假卸载：`dlt` / `alv` 只清了账本，工具还在
+
+这两个模块的工具注册在各自 bridge 内部，`_aduGroups[id]` 存的是**空数组**（truthy），
+旧代码判断 `if (!disposers)` 才 dispose —— 空数组绕过了这个分支，于是 `adu_unload alv`
+删了账本、写了持久化，8 个 `alv_*` 工具却仍然可用。修：卸载时**先按 key dispose bridge**，再跑 disposer。
+
+### 3) ALV `alv_edges` 的标签不再压正文
+
+原来 `y=81(4)` 这类标签直接画在线上，实测会盖住表格末尾几行（尤其最后一条线）。
+现在标签画在**左侧 72px 边栏**里（`gutter` 可调、`labels:false` 可关），输出图比原图宽
+`gutter` 像素，回传 `toSource.x = -gutter` 与一句换算说明。
+
+### 测试
+
+- `tests/alv-adu.test.mjs` 118 → **130**：新增「粘性装载（行为）」段 —— 用 `apply()` 造真服务实例 +
+  会回收的 `tools.register`，断言：按 `det.adu.mounted` 恢复、幂等、**卸载后工具真的消失**、
+  持久化写回 `[]`、卸载后可重新装载。
+- 全量：128 + 60 + 23 + 47 + 17 + 37 + 22 + 40 + 71 + 10 + 130 = **585** 断言全绿。
+- 文档：`docs/DET功能.md` 补 DLT / ALV / ADU 三节并修正工具总数（45）；`docs/GUIDE.md` 新增
+  「12. ADU 按需装载 与 ALV 辅助线视觉」；`ARCHITECTURE.md` 新增 §11.7（粘性装载不变量 + 两个缺陷的教训）。
+
 ## v2.11.0 — ADU 改成「只装不卸」：粘性装载 + adu_rememory 重新注入工具记忆
 
 一句需求：「ADU 不主动卸载工具（agent 仍可卸，虽然那多少是'何意味'），但要提供 rememory tool list 重新增强局部记忆。」

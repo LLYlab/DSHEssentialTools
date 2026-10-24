@@ -20,7 +20,7 @@ node tests\gp-state.test.mjs          # 常驻插件意图模型 + 联动源码�
 node tests\dlt-host.test.mjs          # DLT 集成：工具/提示/端点/容错    —— 37 项断言
 node tests\dlt-integration.test.mjs   # DLT 集成：客户端按开关装配      —— 22 项断言
 node tests\draft.test.mjs             # 草图：实时模型表判定 + 落盘收窄  —— 40 项断言
-node tests\alv-adu.test.mjs           # ALV 八件套 + ADU 模块表 + 真跑引擎  —— 80 项断言
+node tests\alv-adu.test.mjs           # ALV/ADU + 粘性装载行为 + 真跑引擎  —— 130 项断言
 ```
 
 与草图相关的那个**独立包**（`dsh-sketch-draft`，见 CHANGELOG v2.9.4 第 5 节）

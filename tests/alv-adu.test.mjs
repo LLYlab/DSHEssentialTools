@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { ADU_MODULES, ADU_MODULE_IDS, ADU_TOOL_NAMES, aduLoadableIds, aduModule, aduFeatureOn, aduToolIndex, ADU_TOOL_INDEX } from "../lib/adu.js";
 import { ALV_FEATURE_KEYS, ALV_TOOL_NAMES, alvFeatureOn } from "../lib/alv.js";
+import { apply, Config } from "../lib/index.js";
 
 let pass = 0;
 const failures = [];
@@ -214,6 +215,62 @@ ok(indexSrc.indexOf("this._aduRestoreMounts().catch") !== -1, "按需模式装�
 ok(indexSrc.indexOf("_applyLoadMode") !== -1, "开关切模式时整体重装（_applyLoadMode）");
 ok(clientSrc.indexOf("装载是粘性") !== -1, "管理器里如实说明粘性");
 ok(clientSrc.indexOf("adu_rememory") !== -1, "管理器里提示 adu_rememory");
+
+section("粘性装载（行为）—— 恢复、幂等、真卸载");
+
+{
+  // 一个「能真的注册/回收工具」的假上下文：tools.register 返回真正的 disposer，
+  // 于是「卸下了但工具还在」这种假卸载会被当场抓住（v2.11.0 的真实缺陷）。
+  const active = new Set();
+  const record = { prompts: 0, provided: [] };
+  const ctx = {
+    effect(fn) { let d = null; try { d = fn(); } catch (e) { /* ignore */ } return typeof d === "function" ? d : () => {}; },
+    on() { return () => {}; },
+    get(name) { return name === "tools" ? ctx.tools : (name === "systemPrompt" ? ctx.systemPrompt : undefined); },
+    reflect: { props: {}, store: {}, provide(n, v) { record.provided.push(n); return v; }, get() {}, set() {}, bind(f) { return f; } },
+    provide(n, v) { record.provided.push(n); return v; },
+    set(n, v) { record.provided.push(n); return v; },
+    mixin() {},
+    typert: { register() {} },
+    tools: {
+      register(def) { active.add(def.name); return () => active.delete(def.name); },
+      guard() {},
+    },
+    systemPrompt: { section() { record.prompts++; return () => {}; } },
+  };
+
+  const service = apply(ctx, Config({}));
+  await new Promise((r) => setTimeout(r, 120));
+  // 换成可记录的设置层（绕开真实存储域），并固定开关快照
+  const written = [];
+  service.vtd = {
+    getSetting: async (k) => (k === "det.adu.mounted" ? { ok: true, value: ["alv"] } : { ok: true, value: {} }),
+    setSetting: async (k, v) => { written.push({ k, v }); return { ok: true }; },
+  };
+  service._featuresSnapshot = { master: true, adu: true, alv: true };
+  service._aduGroups = new Map();
+
+  const restored = await service._aduRestoreMounts();
+  eq(restored.restored, ["alv"], "启动时按 det.adu.mounted 恢复 alv");
+  ok(service._aduGroups.has("alv"), "恢复后 alv 记账在 _aduGroups");
+  ok(active.has("alv_info") && active.has("alv_edges"), "恢复真的注册了 alv_* 工具");
+
+  const again = await service._aduRestoreMounts();
+  eq(again.restored, [], "再次恢复不会重复装载");
+
+  const un = await service._aduUnmount("alv");
+  eq(un.ok, true, "卸载返回成功");
+  ok(!service._aduGroups.has("alv"), "卸载后账本清空");
+  ok(!active.has("alv_info"), "卸载后工具真的被回收（不是假卸载）");
+  const last = written[written.length - 1];
+  eq(last && last.k, "det.adu.mounted", "卸载后写回 det.adu.mounted");
+  eq(last && last.v, [], "卸载后持久化列表为空");
+
+  const remount = await service._aduMount("alv");
+  eq(remount.ok, true, "卸载后可重新装载");
+  ok(active.has("alv_info"), "重新装载后工具回来了");
+  eq(remount.sticky, true, "装载结果标注 sticky");
+}
 
 // ─────────────────────────────────────────────────────────────
 section("引擎契约（需要 python312；缺失则跳过）");

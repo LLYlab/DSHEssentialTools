@@ -429,11 +429,29 @@ def op_edges(args: dict) -> dict:
         color = (255, 59, 48) if l["kind"] == "h" else ((10, 132, 255) if l["kind"] == "v" else (255, 159, 10))
         draw.line([(l["x1"] + origin[0], l["y1"] + origin[1]), (l["x2"] + origin[0], l["y2"] + origin[1])],
                   fill=color, width=2)
+    # 坐标标签画在**左侧新增的空白边栏**里，而不是压在图上 —— 实测压线标签会
+    # 盖住正文（尤其是末尾几行），模型反而更难核对。边栏宽 gutter 像素，
+    # 原图坐标 = 输出坐标 - gutter（回传 toSource 说明这一点）。
+    gutter = 0 if args.get("labels") is False else max(0, as_int(args.get("gutter", 72), 72))
     font = font_of(12)
-    for pos, votes in h_pos[: int(args.get("labelLimit", 40) or 40)]:
-        draw.text((2, pos + origin[1]), "y=%d(%d)" % (pos, votes), fill=(255, 59, 48), font=font)
-    for pos, votes in v_pos[: int(args.get("labelLimit", 40) or 40)]:
-        draw.text((pos + origin[0], 2), "x=%d(%d)" % (pos, votes), fill=(10, 132, 255), font=font)
+    if gutter:
+        canvas = Image.new("RGB", (out_img.size[0] + gutter, out_img.size[1]), (255, 255, 255))
+        canvas.paste(out_img, (gutter, 0))
+        out_img = canvas
+        draw = ImageDraw.Draw(out_img)
+    label_h = h_pos[: int(args.get("labelLimit", 40) or 40)]
+    label_v = v_pos[: int(args.get("labelLimit", 40) or 40)]
+    for pos, votes in label_h:
+        txt = "y=%d(%d)" % (pos, votes)
+        tw, th = text_size(draw, txt, font)
+        if gutter:
+            draw.text((max(2, gutter - tw - 4), max(0, pos + origin[1] - th // 2)), txt,
+                      fill=(255, 59, 48), font=font)
+        else:
+            draw.text((2, pos + origin[1]), txt, fill=(255, 59, 48), font=font)
+    for pos, votes in label_v:
+        txt = "x=%d(%d)" % (pos, votes)
+        draw.text((pos + origin[0] + gutter, 2), txt, fill=(10, 132, 255), font=font)
     dest = out_path(args, src, "edges")
     out_img.save(dest)
 
@@ -442,12 +460,15 @@ def op_edges(args: dict) -> dict:
         "out": os.path.abspath(dest),
         "box": list(box) if box else None,
         "scale": scale,
+        "gutter": gutter,
+        "toSource": {"x": -gutter, "y": 0, "scale": 1.0},
         "counts": {"lines": len(lines), "h": len(h_lines), "v": len(v_lines),
                    "hPositions": len(h_pos), "vPositions": len(v_pos)},
         "horizontalPositions": [{"y": p, "votes": v} for p, v in h_pos],
         "verticalPositions": [{"x": p, "votes": v} for p, v in v_pos],
         "lines": lines[: as_int(args.get("maxLinesOut", 120), 120)],
-        "note": "坐标已换算回原图；horizontalPositions/verticalPositions 是合并后的边线位置（votes=支持该位置的线段数）。",
+        "note": "坐标已换算回原图；horizontalPositions/verticalPositions 是合并后的边线位置（votes=支持该位置的线段数）。"
+                "标签画在左侧边栏里：输出图比原图宽 gutter 像素，原图 x = 输出 x - gutter。",
     }
 
 

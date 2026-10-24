@@ -21,16 +21,28 @@
 | 安全审计 | ✗（仅 GUI） | 工具栏 🛡 + 设置页 |
 | 余额 / 单价 / 本对话花费 | ✗（仅 GUI） | 右下角状态框 |
 | DET 管理器（总开关 + 功能开关） | ✗（仅 GUI） | 设置 → DET 管理器 |
+| DLT 集成（文档 / 执行 / 环境） | ✓ 6 个工具 | `dlt_env` / `dlt_run` / `dlt_build` / `dlt_doc_*` |
+| **ALV 辅助线视觉** | ✓ 8 个工具 | `alv_info` / `grid` / `crop` / `edges` / `ocr` / `tile` / `annotate` / `enhance` |
+| **ADU 按需装载** | ✓ 6 个元工具 | `adu_list` / `describe` / `load` / `unload` / `status` / `rememory` |
 
 ---
 
-## 二、模型工具（25 个，名称即调用名）
+## 二、模型工具（45 个，名称即调用名）
 
-**全局插件（10）**：`det_global_plugin_list` / `_enable` / `_disable` / `_scan_installed` / `_import_installed` / `_set_enabled` / `_github_direct` / `_github_rebuild` / `_github_save` / `_store_search`
+> **ADU 按需模式下，启动时只注册 6 个 `adu_*` 元工具**；下表其余工具由 `adu_load` 按模块现装，
+> 装载是**粘性**的（重启后自动装回）。完整模块划分见「十三、ADU 按需装载」。
 
-**浏览器（6）**：`det_browser`（read_text / read_dom / screenshot / get_url / get_title / navigate / click / fill / run）、`web_human_search` / `web_insite_search` / `web_act` / `web_inspect` / `web_focus`
+**全局插件库（10）**：`det_global_plugin_list` / `_enable` / `_disable` / `_scan_installed` / `_import_installed` / `_set_enabled` / `_store_search` / `_github_direct` / `_github_rebuild` / `_github_save`
 
-**其余（9）**：`det_tct`、`cdm_list` / `cdm_search` / `cdm_read`、`mda_list_areas` / `mda_card` / `mda_activate` / `mda_create_no_workspace_agent`、`det_mms`（开关开启才注册）
+**记忆与模型（9）**：`det_tct`、`cdm_list` / `cdm_search` / `cdm_read`、`mda_list_areas` / `mda_card` / `mda_activate` / `mda_create_no_workspace_agent`、`det_mms`（开关开启才注册）
+
+**浏览器（1 + 5）**：`det_browser`（list_tabs / read_text / read_dom / screenshot / get_url / get_title / navigate / click / fill / run）、`web_inspect` / `web_act` / `web_focus` / `web_human_search` / `web_insite_search`
+
+**DLT（6）**：`dlt_env` / `dlt_run` / `dlt_build` / `dlt_doc_read` / `dlt_doc_write` / `dlt_doc_convert`
+
+**ALV（8）**：`alv_info` / `alv_grid` / `alv_crop` / `alv_edges` / `alv_ocr` / `alv_tile` / `alv_annotate` / `alv_enhance`
+
+**ADU（6）**：`adu_list` / `adu_describe` / `adu_load` / `adu_unload` / `adu_status` / `adu_rememory`
 
 ---
 
@@ -127,3 +139,59 @@
 ## 十、峰值时段
 
 北京时间（UTC+8）周一至周五 **9:00–12:00、14:00–18:00** = 峰；其余 = 错峰。宿主 `isDsPeakNowHost()` 与前端 `isDsPeakNow()` 一致，用于状态框价格档位与本对话花费估算。
+
+---
+
+## 十一、DLT 集成（DET 自带引擎，DLT 本体停摆）
+
+DET 总开关打开时，DLT（`dsh-light-tool`）的宿主侧能力由 DET 自己提供，DLT 本体整体停摆（工具/提示/界面/设置页都不再出现）。
+
+| 功能键 | 内容 |
+| --- | --- |
+| `dltEnv` | `dlt_env` + 系统提示里的本机工具链清单（MSVC/MSBuild/cmake/ninja/Python/Node/git/dotnet/Office COM/Edge） |
+| `dltRun` | `dlt_run` 直接跑程序、`dlt_build` 编 MSBuild 工程 |
+| `dltDocs` | `dlt_doc_read` / `dlt_doc_write` / `dlt_doc_convert`（PDF/Word/Excel/CSV，py312 引擎） |
+| `dltPreview` | 右栏 docx/xlsx/csv 预览（依赖文档工具） |
+| `dltCost` | 每条回答尾部的「本轮 ¥x.xx」小签 |
+| `dltDraft` | 输入框「+」旁的草图按钮（关掉则由独立包 `dsh-sketch-draft` 接手） |
+
+---
+
+## 十二、ALV 辅助线视觉（图片精确识别）
+
+视觉模型看的是「一张图」，不是「一个坐标系」。ALV 用纯几何（无 ML、无网络、无 API Key）把脚手架造出来，
+再让模型亲自 `read_image` 看。引擎随包：`py/alv.py`（Pillow + numpy + OpenCV，python312 环境）
+与 `py/alv_ocr.ps1`（Windows.Media.Ocr 的 WinRT 桥，离线、带逐词包围盒）。
+
+| 工具 | 作用 |
+| --- | --- |
+| `alv_info` | 尺寸/模式/DPI/亮度/暗像素比例/16 段直方图（可选噪声）→ 决定要不要裁剪放大或二值化 |
+| `alv_grid` | 栅格 + 四周坐标标尺 + **任意位置辅助线**（`guides:{horizontal:[470],vertical:[430]}`），回传 `toSource` |
+| `alv_crop` | 精确裁剪 / 自动裁空白 / 放大（小字先放大再 OCR） |
+| `alv_edges` | Canny + 概率霍夫 → 线段 + **合并后的行/列边线位置**（`{y,votes}`）；标签画在左侧边栏里，不压正文 |
+| `alv_ocr` | 本机离线 OCR；`mode=lines` 自动合并中文词间空格，`mode=cells` 逐格出**表格矩阵** |
+| `alv_tile` | 带重叠切块 + 放大，大字图分块看 |
+| `alv_annotate` | 按坐标画 box/line/arrow/cross/circle/text（把「我算出来的位置」画给人看） |
+| `alv_enhance` | 灰度/自动对比度/自适应二值化/锐化/放大（`auto` 全上） |
+
+**坐标约定**：一律是**原图左上角为原点**的像素坐标；任何改变画布的工具都回传 `toSource`。
+
+---
+
+## 十三、ADU 按需装载（AutoDETUsage）
+
+启动只装 6 个元工具，其余按需装载；**装载粘性**（重启后仍在），ADU 不会主动卸载。
+
+| 模块 | 工具数 | 说明 |
+| --- | --- | --- |
+| `plugins` | 19 | 全局插件库 + CDM + TCT + MDA + MMS（权限面最大的一块） |
+| `browser` | 1 | `det_browser` |
+| `web` | 5 | `web_inspect` / `web_act` / `web_focus` / `web_human_search` / `web_insite_search` |
+| `dlt` | 6 | 文档 / 执行 / 环境 |
+| `alv` | 8 | 辅助线视觉八件套 |
+| `security` / `project` | — | 常驻（纯监听 / 端点），不是装载单元 |
+
+- 装载落盘在 `det.adu.mounted`，宿主启动时自动恢复。
+- **`adu_rememory`**：长对话被压缩后，工具 schema 还在但用法常被摘要掉 —— 它把「有哪些工具、怎么调、干什么」
+  压成一张索引表重新注入（45 条），**不重新装载、也不占工具 schema 预算**。
+- 关掉「ADU 按需装载」或设 `aduBoot: "eager"` 即回到一上来全装（即时生效，无需重启）。
