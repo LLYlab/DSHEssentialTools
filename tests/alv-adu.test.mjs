@@ -20,7 +20,7 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { ADU_MODULES, ADU_MODULE_IDS, ADU_TOOL_NAMES, aduLoadableIds, aduModule, aduFeatureOn } from "../lib/adu.js";
+import { ADU_MODULES, ADU_MODULE_IDS, ADU_TOOL_NAMES, aduLoadableIds, aduModule, aduFeatureOn, aduToolIndex, ADU_TOOL_INDEX } from "../lib/adu.js";
 import { ALV_FEATURE_KEYS, ALV_TOOL_NAMES, alvFeatureOn } from "../lib/alv.js";
 
 let pass = 0;
@@ -63,7 +63,7 @@ eq(loadable.filter((id) => (aduModule(id).always === true)).length, 0, "可装�
 eq(ADU_MODULES.filter((m) => m.always === true).length, ADU_MODULES.length - loadable.length,
   "always 模块数 = 总数 − 可装载数");
 
-eq(ADU_TOOL_NAMES, ["adu_list", "adu_describe", "adu_load", "adu_unload", "adu_status"], "五个元工具名固定");
+eq(ADU_TOOL_NAMES, ["adu_list", "adu_describe", "adu_load", "adu_unload", "adu_status", "adu_rememory"], "六个元工具名固定（v2.11 起含 adu_rememory）");
 for (const name of ADU_TOOL_NAMES) ok(aduSrcHasTool(name), `adu.js 里注册了 ${name}`);
 
 function aduSrcHasTool(name) {
@@ -135,7 +135,7 @@ section("元工具输出必须是无损 JSON（undefined 会让整次调用被�
   });
   fakeBridge._features = { master: true, adu: true };
   const aduTools = aduMod.buildAduTools(fakeBridge);
-  eq(aduTools.length, 5, "buildAduTools 产出 5 个工具");
+  eq(aduTools.length, 6, "buildAduTools 产出 6 个工具");
 
   for (const t of aduTools) {
     const args = t.name === "adu_describe"
@@ -160,6 +160,60 @@ section("元工具输出必须是无损 JSON（undefined 会让整次调用被�
   eq(badOut.ok, false, "未知模块如实失败");
   ok(typeof badOut.error === "string" && badOut.error.length > 0, "失败时给出可读错误");
 }
+
+// ─────────────────────────────────────────────────────────────
+section("adu_rememory —— 重新注入工具记忆");
+
+{
+  // 索引必须覆盖「模块表里声明的每一个工具」，否则模型拿到的记忆是残缺的。
+  const declared = new Set();
+  for (const m of ADU_MODULES) for (const t of m.tools) declared.add(t);
+  const missing = [...declared].filter((name) => !ADU_TOOL_INDEX[name]);
+  eq(missing.length, 0, `每个模块工具都要有索引条目（缺：${missing.join(", ") || "无"}）`);
+  const stale = Object.keys(ADU_TOOL_INDEX).filter((name) => !declared.has(name));
+  eq(stale.length, 0, `索引里不得有已经不存在的工具（多：${stale.join(", ") || "无"}）`);
+
+  const all = aduToolIndex({ includeAdu: true });
+  eq(all.reduce((n, g) => n + g.tools.length, 0), declared.size + ADU_TOOL_NAMES.length,
+    "全量索引 = 模块工具 + 元工具");
+  let badParams = 0; let badDesc = 0;
+  for (const g of all) for (const t of g.tools) {
+    if (!(typeof t.params === "string" && t.params.length > 0)) badParams++;
+    if (!(typeof t.desc === "string" && t.desc.length >= 6)) badDesc++;
+  }
+  eq(badParams, 0, "每条索引都有参数摘要");
+  eq(badDesc, 0, "每条索引都有一句话说明");
+
+  const alvOnly = aduToolIndex({ modules: ["alv"] });
+  eq(alvOnly.length, 1, "按模块筛选只返回该模块");
+  eq(alvOnly[0].tools.length, 8, "alv 索引 8 条");
+
+  // 端到端：真跑 rememory，输出必须无损 JSON 且带已装模块。
+  const aduMod = await import("../lib/adu.js");
+  const bridge = new aduMod.AduBridge({ ctx: { get: () => undefined }, config: {} }, {
+    mount: async () => ({ ok: true, tools: [] }),
+    unmount: async () => ({ ok: true }),
+    status: () => ({ lazy: true, loaded: { alv: true }, toolsByModule: { alv: [] }, groups: ["alv"] }),
+  });
+  bridge._features = { master: true, adu: true };
+  const rememory = aduMod.buildAduTools(bridge).find((t) => t.name === "adu_rememory");
+  ok(!!rememory, "adu_rememory 已注册");
+  const out = await rememory.execute({}, {});
+  eq(out.ok, true, "rememory 成功");
+  ok(out.modules.some((m) => m.id === "alv"), "默认带上已装载的 alv");
+  ok(out.modules.some((m) => m.id === "adu"), "默认带上 ADU 元工具索引");
+  eq(JSON.stringify(JSON.parse(JSON.stringify(out))), JSON.stringify(out), "输出是无损 JSON");
+}
+
+section("粘性装载 —— ADU 不主动卸载");
+
+ok(indexSrc.indexOf("_aduPersistMounts") !== -1, "装载后持久化（_aduPersistMounts）");
+ok(indexSrc.indexOf('"det.adu.mounted"') !== -1, "持久化键为 det.adu.mounted");
+ok(indexSrc.indexOf("_aduRestoreMounts") !== -1, "启动时恢复（_aduRestoreMounts）");
+ok(indexSrc.indexOf("this._aduRestoreMounts().catch") !== -1, "按需模式装载扩展后立即恢复上次模块");
+ok(indexSrc.indexOf("_applyLoadMode") !== -1, "开关切模式时整体重装（_applyLoadMode）");
+ok(clientSrc.indexOf("装载是粘性") !== -1, "管理器里如实说明粘性");
+ok(clientSrc.indexOf("adu_rememory") !== -1, "管理器里提示 adu_rememory");
 
 // ─────────────────────────────────────────────────────────────
 section("引擎契约（需要 python312；缺失则跳过）");

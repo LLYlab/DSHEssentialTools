@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3%2B-blue?style=flat-square" alt="DSH">
   <img src="https://img.shields.io/badge/type-permanent%20plugin-8c9eff?style=flat-square" alt="type">
-  <img src="https://img.shields.io/badge/version-2.10.1-8c9eff?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/version-2.11.0-8c9eff?style=flat-square" alt="version">
   <img src="https://img.shields.io/badge/tools-44%20model%20tools%20%C2%B7%205%20at%20boot-7c4dff?style=flat-square" alt="tools">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Edge%20%2F%20Chrome-F7DF1E?style=flat-square" alt="platform">
 </p>
@@ -48,7 +48,7 @@ DET (the plugin `dsh-essential-tools`) is the **permanent** DeepSeek Harness plu
 
 ---
 
-## 🆕 What 2.10 changed
+## 🆕 What changed in 2.10 / 2.11
 
 Three answers to three long-standing problems:
 
@@ -85,16 +85,17 @@ ALV is **geometry, not a better model**: no ML, no network, no API key. You (or 
 
 Engine ships in the package: `py/alv.py` (Pillow + numpy + OpenCV on the `python312` environment) and `py/alv_ocr.ps1` (WinRT bridge, pure-ASCII source, UTF-8 JSON out). ALV also injects a system-prompt section telling the model: *don't guess coordinates — build the scaffolding, then look again.*
 
-## 🧩 ADU — paying only for what you use
+## 🧩 ADU — load once, remember on demand
 
-Registering every tool up front means every request carries every schema. ADU makes loading an explicit protocol:
+Registering every tool up front means every request carries every schema. ADU makes loading an explicit protocol — but **loading is sticky**: ADU never unloads anything on its own, not even across restarts.
 
 ```text
-boot        → only adu_list / adu_describe / adu_load / adu_unload / adu_status are registered
-adu_list    → the module table: which tools each module brings, its cost and risk, whether it is mounted
+boot        → only the 6 adu_* meta tools are registered
+adu_list    → module table: which tools each module brings, its cost/risk, whether it is mounted
 adu_describe id=alv  → sub-capabilities, per-tool purpose, side effects, when to use it
-adu_load    id=alv   → mount (same effect as flipping the switch; tools appear next turn)
-adu_unload  id=alv   → unmount; the following turns get a smaller context back
+adu_load    id=alv   → mount (sticky: it stays mounted, and comes back after a restart)
+adu_rememory         → re-inject the tool index into context (after compaction, when you forgot what you have)
+adu_unload  id=alv   → unmount — rarely needed, and usually not what you want
 ```
 
 | Module | Tools it brings | Notes |
@@ -106,11 +107,25 @@ adu_unload  id=alv   → unmount; the following turns get a smaller context back
 | `alv` | 8 | the image suite above |
 | `security`, `project` | — | always-on listeners / endpoints, not mount units |
 
-Three rules keep it honest:
+### Why `adu_rememory` exists
+
+Long conversations get compacted. Tool *schemas* survive, but the model's working memory of "which tool does what, with which parameters" gets summarized away — and re‑mounting does not help, because nothing was unmounted. `adu_rememory` returns a compact index (one line per tool: `name(params) — what it does`) built from the same table that drives the module list, so the model can pick up exactly where it left off without paying schema budget twice.
+
+```text
+工具记忆（ADU 按需模式 · 2 组 · 14 个工具）
+
+## alv · ALV 辅助线视觉
+   alv_grid(path, cell?, majorEvery?, guides?, out?) — 加栅格+标尺+辅助线，建立像素坐标系
+   alv_edges(path, box?, low?, high?, minLineLen?, mergeTol?, scale?) — 边线提取：线段 + 合并后的行/列位置
+   …
+```
+
+Four rules keep it honest:
 
 1. **The module table is the single source of truth** (`lib/adu.js`); the meta tools only validate and report — they hold no state.
 2. **Mounting reuses the very same disposer pipeline** as the master switch and the UI switches, so there is never a "second state". Bookkeeping lives in `_aduGroups` (`id → [disposer]`).
-3. **Turning it off is the escape hatch**: flip `ADU 按需装载` off (or set `aduBoot: "eager"`) and you are back to load-everything at boot. Master switch off removes ADU too.
+3. **Sticky by design**: mounts persist to `det.adu.mounted` and are restored at boot. Only `adu_unload`, the master switch, or unloading the plugin removes them.
+4. **Turning ADU off is the escape hatch**: flip `ADU 按需装载` off (or set `aduBoot: "eager"`) and you are back to load-everything at boot — applied immediately, no restart.
 
 ## 🗺 Feature map
 
@@ -208,7 +223,7 @@ The **健康与失败诊断** panel (Settings) shows boot health, plugin-library
 
 ## 🧪 Tests
 
-11 suites, **551 assertions**, no profile / no network / no server required:
+11 suites, **573 assertions**, no profile / no network / no server required:
 
 ```powershell
 node tests\unit.test.mjs              # pure functions + Config neutrality      128
@@ -221,7 +236,7 @@ node tests\dlt-integration.test.mjs   # client mounting matrix                  
 node tests\draft.test.mjs             # sketch draft: live model judgement        40
 node tests\gp-state.test.mjs          # permanent-plugin intent model + guards    71
 node tests\pause.test.mjs             # master-switch pause/resume scope          10
-node tests\alv-adu.test.mjs           # ALV/ADU contracts + real engine runs      96
+node tests\alv-adu.test.mjs           # ALV/ADU contracts + real engine runs     118
 ```
 
 Run them **from inside the package** (ESM resolves the real `@deepseek-ai/*` peers there). Exit code `0` = all green.
