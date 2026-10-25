@@ -220,6 +220,14 @@ ok(indexSrc.indexOf("_aduPinByTool") !== -1, "存在「用过即钉住」_aduPin
 ok(indexSrc.indexOf('ctx.on("agent/pre-step"') !== -1, "每步请求前自愈（agent/pre-step）");
 ok(indexSrc.indexOf('ctx.on("tools/pre-execute"') !== -1, "工具被调用时钉住所属模块");
 ok(indexSrc.indexOf("aduMode") !== -1, "detFeatureGet 回传 aduMode（模式事实可查）");
+ok(indexSrc.indexOf("_aduPromptText") !== -1, "存在「工具选择优先级」提示生成器");
+ok(indexSrc.indexOf("专用工具优先") !== -1, "提示里明确：专用工具优先");
+ok(indexSrc.indexOf("什么时候才用 pwsh") !== -1, "提示里明确：pwsh 只是兜底");
+ok(indexSrc.indexOf("_refreshAduPrompt") !== -1, "装载/卸载后刷新提示（「这一轮可用」实时）");
+const dltSrc = readFileSync(join(REPO, "lib", "dlt-tools.js"), "utf8");
+ok(dltSrc.indexOf("function normalizedRun") !== -1, "dlt 结果有归一化（exitCode 不会是 null）");
+eq((dltSrc.match(/exitCode: \{ type: "number" \}/g) || []).length, 2, "dlt_run / dlt_build 的 exitCode 都声明为 number");
+ok(dltSrc.indexOf("nullable") === -1, "不得使用宿主不认识的 nullable 关键字");
 ok(indexSrc.indexOf("this._aduWanted") !== -1, "wanted 内存镜像存在");
 ok(!/if \(lazy && !mounted\("alv"\)\) this\.alv\.dispose\(\)/.test(indexSrc),
   "按需模式不得隐式 dispose ALV（旧实现的自动卸载来源）");
@@ -297,6 +305,13 @@ section("粘性装载（行为）—— 恢复、幂等、真卸载");
   ok(service._aduWanted.has("alv"), "钉住写进 wanted");
   const persisted = written[written.length - 1];
   eq(persisted && persisted.v, ["alv"], "钉住立即持久化");
+
+  const promptText = service._aduPromptText();
+  ok(promptText.indexOf("专用工具优先") !== -1, "提示写明专用工具优先");
+  ok(promptText.indexOf("pwsh") !== -1, "提示交代 pwsh 只做兜底");
+  ok(promptText.indexOf("alv_ocr") !== -1, "已装模块的工具被点名（这一轮可用）");
+  ok(promptText.indexOf("dlt_doc_read") === -1, "未装模块的工具不点名（不推荐手里没有的工具）");
+  ok(promptText.indexOf("还没装") !== -1, "未装模块单独一段，给 adu_load 提示");
 }
 
 // ─────────────────────────────────────────────────────────────

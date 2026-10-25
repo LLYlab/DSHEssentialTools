@@ -520,3 +520,18 @@ DET 有 45 个模型工具。全塞进上下文既贵又容易让模型挑错，
 全程离线：图片运算走 python312（Pillow + numpy + OpenCV），OCR 走系统引擎
 （Windows.Media.Ocr，zh-Hans-CN），不联网、不传图、不需要 API Key。
 产物落在 `<DSH_HOME>/det/alv`（可用配置 `alvCacheDir` 改）。
+
+### 12.3 什么时候用专用工具，什么时候才用 pwsh
+
+DET 的提示会明确写一条**选择优先级**（`tool:det-adu` 段落，随装载状态实时生成）：
+
+| 任务 | 用这个 | 不要 |
+| --- | --- | --- |
+| PDF / Word / Excel / CSV 读写 | `dlt_doc_read` / `dlt_doc_write` / `dlt_doc_convert` | 写 python/pwsh 脚本解析 |
+| 跑程序、编译 | `dlt_run` / `dlt_build`（vcvars 已注入） | `& cmd /c`、自己拼 vcvarsall、拼 msbuild 全路径 |
+| 找工具链在哪 | `dlt_env` | `where` / `Get-Command` 逐个试 |
+| 图片读数、认字、量尺寸 | `alv_info` / `alv_grid` / `alv_edges` / `alv_ocr` | ImageMagick、pytesseract、临时 python |
+| 读/操作网页 | `det_browser` / `web_*` | curl 页面再解析 HTML |
+| git、目录整理、临时计算 | `pwsh` | —— |
+
+判据一句话：**只要有一件专用工具能直接完成这件事，就先用它**；pwsh 是兜底，不是默认。
