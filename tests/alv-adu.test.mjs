@@ -215,6 +215,16 @@ ok(indexSrc.indexOf("this._aduRestoreMounts().catch") !== -1, "按需模式装�
 ok(indexSrc.indexOf("_applyLoadMode") !== -1, "开关切模式时整体重装（_applyLoadMode）");
 ok(clientSrc.indexOf("装载是粘性") !== -1, "管理器里如实说明粘性");
 ok(clientSrc.indexOf("adu_rememory") !== -1, "管理器里提示 adu_rememory");
+ok(indexSrc.indexOf("_aduEnsure") !== -1, "存在自愈 _aduEnsure");
+ok(indexSrc.indexOf("_aduPinByTool") !== -1, "存在「用过即钉住」_aduPinByTool");
+ok(indexSrc.indexOf('ctx.on("agent/pre-step"') !== -1, "每步请求前自愈（agent/pre-step）");
+ok(indexSrc.indexOf('ctx.on("tools/pre-execute"') !== -1, "工具被调用时钉住所属模块");
+ok(indexSrc.indexOf("aduMode") !== -1, "detFeatureGet 回传 aduMode（模式事实可查）");
+ok(indexSrc.indexOf("this._aduWanted") !== -1, "wanted 内存镜像存在");
+ok(!/if \(lazy && !mounted\("alv"\)\) this\.alv\.dispose\(\)/.test(indexSrc),
+  "按需模式不得隐式 dispose ALV（旧实现的自动卸载来源）");
+ok(!/if \(lazy && !mounted\("dlt"\)\) this\.dlt\.dispose\(\)/.test(indexSrc),
+  "按需模式不得隐式 dispose DLT");
 
 section("粘性装载（行为）—— 恢复、幂等、真卸载");
 
@@ -270,6 +280,23 @@ section("粘性装载（行为）—— 恢复、幂等、真卸载");
   eq(remount.ok, true, "卸载后可重新装载");
   ok(active.has("alv_info"), "重新装载后工具回来了");
   eq(remount.sticky, true, "装载结果标注 sticky");
+  ok(service._aduWanted.has("alv"), "装载后进入 wanted（期望集合）");
+
+  // 模拟"工具被莫名卸掉"（重启竞态/热重载/误卸）：自愈必须装回来
+  service._aduGroups = new Map();
+  const healed = service._aduEnsure("test");
+  eq(healed.ensured, ["alv"], "自愈把丢掉的模块补回来");
+  ok(service._aduGroups.has("alv"), "自愈后记账恢复");
+  ok(active.has("alv_info"), "自愈真的重新注册了工具");
+
+  // 用过即钉住：清空 wanted 后，只要调用过该模块的工具，就应重新钉住
+  service._aduWanted = new Set();
+  service._aduGroups = new Map();
+  const pinned = service._aduPinByTool("alv_edges");
+  eq(pinned, "alv", "调用过的模块被钉住");
+  ok(service._aduWanted.has("alv"), "钉住写进 wanted");
+  const persisted = written[written.length - 1];
+  eq(persisted && persisted.v, ["alv"], "钉住立即持久化");
 }
 
 // ─────────────────────────────────────────────────────────────

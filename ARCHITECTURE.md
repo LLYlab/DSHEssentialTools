@@ -418,3 +418,21 @@ v2.11.0 的两个真实缺陷（都由行为测试抓出，现已回归覆盖）
 **模式切换**：`_applyLoadMode(features)` 比较 `_aduLazyAtLoad` 与当前判据，
 变化时 `_unloadExtension()` → `_loadExtension()`。没有这一步，`_extLoaded` 守卫会让
 "按需 ↔ 全装"的切换在重启前完全不生效，并让两套注册互相撞名。
+
+### 11.8 v2.12：自愈式按需装载
+
+装配顺序（宿主结构，不可绕过）：`systemPrompt.assemble()` 取工具快照 → `agent/pre-step` 瀑布
+→ `buildRequest` 用该快照。因此"本步内装载"永远改不了本步工具表。
+
+由此定下三条不变量（都有测试守）：
+
+1. **按需模式下 `_syncDetRuntimeFeatures()` 只自愈、不 dispose。** 装与卸只由 ADU 的
+   `_aduMount` / `_aduUnmount` 驱动 —— 旧实现的 `if (lazy && !mounted(id)) dispose()` 会在
+   记账还没有的瞬间把已装模块卸掉，正是"工具自己没了"的来源。
+2. **`_aduWanted` 是期望集合，`_aduGroups` 是事实。** 不一致时 `_aduEnsure()` 补装；
+   它挂在 `agent/pre-step`（每步）、`aduStatus`（每次打开面板）、`_syncDetRuntimeFeatures`。
+3. **用过即钉住。** `tools/pre-execute` 里按工具名反查模块，命中即写入 wanted 并落盘 ——
+   "用过的工具被忘掉"在结构上不可能再发生。
+
+诊断面：`detFeatureGet.aduMode` 回传 `{lazy, atLoad, boot, wanted, loaded}`；mount/unmount/ensure/pin
+都写失败账本。
