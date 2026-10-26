@@ -225,6 +225,12 @@ ok(indexSrc.indexOf("专用工具优先") !== -1, "提示里明确：专用工�
 ok(indexSrc.indexOf("什么时候才用 pwsh") !== -1, "提示里明确：pwsh 只是兜底");
 ok(indexSrc.indexOf("_refreshAduPrompt") !== -1, "装载/卸载后刷新提示（「这一轮可用」实时）");
 const dltSrc = readFileSync(join(REPO, "lib", "dlt-tools.js"), "utf8");
+ok(indexSrc.indexOf("_aduWarmIds") !== -1, "存在「开局就装」清单 _aduWarmIds（自动装载）");
+ok(indexSrc.indexOf("aduWarm") !== -1, "配置里可调 aduWarm");
+ok(indexSrc.indexOf("_aduPromptTextCache") !== -1, "系统提示文本未变就不重注册（防请求抖动）");
+ok(indexSrc.indexOf("transient") !== -1 && indexSrc.indexOf("浏览器扩展未连接") !== -1,
+  "浏览器断连会等一次并给出可读错误（修 web 频繁失效）");
+ok(indexSrc.indexOf("浏览器桥") !== -1, "detHealth 里能看到桥/扩展/档位状态");
 ok(dltSrc.indexOf("function normalizedRun") !== -1, "dlt 结果有归一化（exitCode 不会是 null）");
 eq((dltSrc.match(/exitCode: \{ type: "number" \}/g) || []).length, 2, "dlt_run / dlt_build 的 exitCode 都声明为 number");
 ok(dltSrc.indexOf("nullable") === -1, "不得使用宿主不认识的 nullable 关键字");
@@ -257,7 +263,7 @@ section("粘性装载（行为）—— 恢复、幂等、真卸载");
     systemPrompt: { section() { record.prompts++; return () => {}; } },
   };
 
-  const service = apply(ctx, Config({}));
+  const service = apply(ctx, Config({ aduWarm: [] }));
   await new Promise((r) => setTimeout(r, 120));
   // 换成可记录的设置层（绕开真实存储域），并固定开关快照
   const written = [];
@@ -305,6 +311,16 @@ section("粘性装载（行为）—— 恢复、幂等、真卸载");
   ok(service._aduWanted.has("alv"), "钉住写进 wanted");
   const persisted = written[written.length - 1];
   eq(persisted && persisted.v, ["alv"], "钉住立即持久化");
+
+  // 自动装载：warm 清单必须默认覆盖最常用的四个模块
+  eq(service._aduWarmIds(), [], "显式 aduWarm: [] 时开局不装任何模块");
+  // 默认配置：warm 应覆盖最常用的四个模块（这就是"自动装载"）
+  {
+    const warmSvc = apply(ctx, Config({}));
+    eq(warmSvc._aduWarmIds(), ["dlt", "alv", "browser", "web"], "默认 warm = dlt/alv/browser/web");
+    eq(warmSvc._aduWarmIds().length, 4, "warm 默认 4 个模块");
+    eq(apply(ctx, Config({ aduWarm: "all" }))._aduWarmIds().length, 5, "aduWarm: all 覆盖全部可装载模块");
+  }
 
   const promptText = service._aduPromptText();
   ok(promptText.indexOf("专用工具优先") !== -1, "提示写明专用工具优先");

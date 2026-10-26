@@ -436,3 +436,12 @@ v2.11.0 的两个真实缺陷（都由行为测试抓出，现已回归覆盖）
 
 诊断面：`detFeatureGet.aduMode` 回传 `{lazy, atLoad, boot, wanted, loaded}`；mount/unmount/ensure/pin
 都写失败账本。
+
+### 11.9 v2.14：warm（开局就装）· 断连重试 · 提示稳定
+
+| 机制 | 位置 | 说明 |
+| --- | --- | --- |
+| warm 集合 | `_aduWarmIds()` + `config.aduWarm` | 默认 `["dlt","alv","browser","web"]`；启动时与 `det.adu.mounted` 合并进 `_aduWanted` 再自愈 |
+| 断连等待 | `browserExec()` | 未连接先等 ≤1.5s；`browser-disconnected` 重试一次（600ms 后）；错误分三层（桥/扩展/档位） |
+| 提示稳定 | `_refreshAduPrompt()` | 文本哈希不变则不 dispose/重注册，避免宿主每步重开请求序列 |
+| 诊断 | `detHealth` | 新增「浏览器桥」一行（运行/连接/档位/网络权限） |

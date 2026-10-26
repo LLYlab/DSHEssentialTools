@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3%2B-blue?style=flat-square" alt="DSH">
   <img src="https://img.shields.io/badge/type-permanent%20plugin-8c9eff?style=flat-square" alt="type">
-  <img src="https://img.shields.io/badge/version-2.13.0-8c9eff?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/version-2.14.0-8c9eff?style=flat-square" alt="version">
   <img src="https://img.shields.io/badge/tools-44%20model%20tools%20%C2%B7%205%20at%20boot-7c4dff?style=flat-square" alt="tools">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Edge%20%2F%20Chrome-F7DF1E?style=flat-square" alt="platform">
 </p>
@@ -223,7 +223,7 @@ The **健康与失败诊断** panel (Settings) shows boot health, plugin-library
 
 ## 🧪 Tests
 
-11 suites, **612 assertions**, no profile / no network / no server required:
+11 suites, **621 assertions**, no profile / no network / no server required:
 
 ```powershell
 node tests\unit.test.mjs              # pure functions + Config neutrality      128
@@ -236,7 +236,7 @@ node tests\dlt-integration.test.mjs   # client mounting matrix                  
 node tests\draft.test.mjs             # sketch draft: live model judgement        40
 node tests\gp-state.test.mjs          # permanent-plugin intent model + guards    71
 node tests\pause.test.mjs             # master-switch pause/resume scope          10
-node tests\alv-adu.test.mjs           # ALV/ADU + sticky/self-heal + engine  157
+node tests\alv-adu.test.mjs           # ALV/ADU + sticky/warm/self-heal      166
 ```
 
 Run them **from inside the package** (ESM resolves the real `@deepseek-ai/*` peers there). Exit code `0` = all green.
