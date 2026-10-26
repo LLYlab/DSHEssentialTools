@@ -1,6 +1,6 @@
 {
   "name": "dsh-essential-tools",
-  "version": "2.14.0",
+  "version": "2.14.1",
   "description": "DSH 永久插件：LVAL 工程工具（编译/运行/代码查看/程序版本快照回退）+ 对话树 VTD（会话内分支/编辑/重新生成）+ 消息小版本 + DET 管理器 + 全局插件控制（五档 + 两种安装路径）+ MDA 分层（CDM 跨对话记忆 / TCT 临时对话 / 模型合作）+ MMS 混合模型 + 网络权限 5 档 + 安全审计 + 浏览器控制（扩展）+ DLT 集成 + **ALV 辅助线视觉（栅格/标尺/辅助线、边线坐标提取、本机 OCR、切块、标注、增强）** + **ADU 按需装载（模块表 → 深查 → 装载，启动只装 5 个元工具）**。Permanent DeepSeek Harness plugin: project tooling, VTD conversation tree, message micro-versions, feature manager, global plugin control, MDA layering (CDM/TCT/model cooperation), MMS, network permission tiers, security audit, browser control via extension, DLT integration, ALV aided line vision (grids/rulers/guide lines, edge-position extraction, on-device OCR, tiling, annotation, enhancement) and ADU lazy tool loading (module table -> deep query -> mount).",
   "type": "module",
   "main": "lib/index.js",

@@ -1,5 +1,37 @@
 # Changelog
 
+## v2.14.1 — 修「关一次总开关/切一次模式，装过的东西就全忘了」+ boot 早期恢复失败
+
+实测现场：重启后 `adu_status` 显示 warm 四个模块在，但**只有历史里有的 `plugins` 没回来**。
+挖出两个叠在一起的问题：
+
+### 1) 临时拆台把"意图"也删了
+
+`_aduUnmountAll()`（总开关关闭、模式切换、插件卸载时调用）走的是 `_aduUnmount()`，
+而 `_aduUnmount()` 在 v2.11 起会 **`_aduWanted.delete(id)` 并落盘** —— 于是"临时拆台"
+等于"用户不想装了"，下一次启动就不再恢复。这就是"装过的东西一个都没回来"的主因。
+
+- 拆出 `_aduDisposeGroup(key)`：只销毁注册，**不动** wanted / 持久化。
+- `_aduUnmountAll()` 改用它；只有模型/用户显式 `adu_unload` 才清意图。
+
+### 2) boot 早期读不到存储 → 恢复空转
+
+`storageDomain` 在宿主启动早期可能还没就绪，`det.adu.mounted` 读到空表，于是"上次装的"
+一个都没回来（warm 兜住了四个，历史里的 `plugins` 就丢了）。
+
+- 新增 `_aduScheduleRestore()`：0s / 2s / 6s / 15s 各试一次，`_aduRestoreMounts()` 幂等。
+
+### 3) 状态可自证
+
+`adu_status` 与 `_aduStatus()` 现在回传 `wanted`（期望集合）、`warm`（开局自动装）、
+`diag`（最近失败账本）。以后"为什么没装/为什么失败"在状态里就能看到，不必再猜。
+
+### 测试
+
+- `alv-adu` 166 → **176**：拆台不清 wanted（行为）、拆台后自愈装回、状态含 wanted/diag、
+  源码守卫（拆台不得走 `_aduUnmount`）。
+- 全量：**631** 断言全绿。
+
 ## v2.14.0 — 默认就装（warm）· 浏览器断连自动等一次 · 提示不再每步重注册
 
 三条反馈：「不会自动装载东西」「不会用」「手动装载后 web 频繁失效」。

@@ -211,7 +211,7 @@ section("粘性装载 —— ADU 不主动卸载");
 ok(indexSrc.indexOf("_aduPersistMounts") !== -1, "装载后持久化（_aduPersistMounts）");
 ok(indexSrc.indexOf('"det.adu.mounted"') !== -1, "持久化键为 det.adu.mounted");
 ok(indexSrc.indexOf("_aduRestoreMounts") !== -1, "启动时恢复（_aduRestoreMounts）");
-ok(indexSrc.indexOf("this._aduRestoreMounts().catch") !== -1, "按需模式装载扩展后立即恢复上次模块");
+ok(indexSrc.indexOf("this._aduScheduleRestore()") !== -1, "按需模式装载扩展后立即恢复上次模块（带重试）");
 ok(indexSrc.indexOf("_applyLoadMode") !== -1, "开关切模式时整体重装（_applyLoadMode）");
 ok(clientSrc.indexOf("装载是粘性") !== -1, "管理器里如实说明粘性");
 ok(clientSrc.indexOf("adu_rememory") !== -1, "管理器里提示 adu_rememory");
@@ -226,6 +226,12 @@ ok(indexSrc.indexOf("什么时候才用 pwsh") !== -1, "提示里明确：pwsh �
 ok(indexSrc.indexOf("_refreshAduPrompt") !== -1, "装载/卸载后刷新提示（「这一轮可用」实时）");
 const dltSrc = readFileSync(join(REPO, "lib", "dlt-tools.js"), "utf8");
 ok(indexSrc.indexOf("_aduWarmIds") !== -1, "存在「开局就装」清单 _aduWarmIds（自动装载）");
+ok(indexSrc.indexOf("_aduDisposeGroup") !== -1, "拆台与卸载分离（_aduDisposeGroup）");
+ok(indexSrc.indexOf("_aduScheduleRestore") !== -1, "启动恢复带重试（存储域 boot 早期可能未就绪）");
+ok(!/\n  _aduUnmountAll\(\) \{\n[\s\S]{0,200}?_aduUnmount\(key\)/.test(indexSrc),
+  "临时拆台不得走 _aduUnmount（否则会清掉持久化意图）");
+ok(indexSrc.indexOf("wanted: Array.from(this._aduWanted)") !== -1, "状态回传 wanted");
+ok(indexSrc.indexOf("diag: (Array.isArray(this._diag)") !== -1, "状态回传失败账本");
 ok(indexSrc.indexOf("aduWarm") !== -1, "配置里可调 aduWarm");
 ok(indexSrc.indexOf("_aduPromptTextCache") !== -1, "系统提示文本未变就不重注册（防请求抖动）");
 ok(indexSrc.indexOf("transient") !== -1 && indexSrc.indexOf("浏览器扩展未连接") !== -1,
@@ -321,6 +327,21 @@ section("粘性装载（行为）—— 恢复、幂等、真卸载");
     eq(warmSvc._aduWarmIds().length, 4, "warm 默认 4 个模块");
     eq(apply(ctx, Config({ aduWarm: "all" }))._aduWarmIds().length, 5, "aduWarm: all 覆盖全部可装载模块");
   }
+
+  // 临时拆台（总开关/模式切换）不能清掉意图，否则"关一次再开"就等于全忘了
+  {
+    await service._aduMount("alv");
+    const wantedBefore = Array.from(service._aduWanted);
+    service._aduUnmountAll();
+    eq(Array.from(service._aduWanted), wantedBefore, "拆台不清 wanted");
+    ok(!service._aduGroups.has("alv"), "拆台后确实卸载了");
+    const healed2 = service._aduEnsure("after-teardown");
+    ok(healed2.ensured.indexOf("alv") >= 0, "拆台后自愈把模块装回来");
+  }
+
+  const statusSnapshot = service._aduStatus();
+  ok(Array.isArray(statusSnapshot.wanted), "状态里有 wanted");
+  ok(Array.isArray(statusSnapshot.diag), "状态里有失败账本");
 
   const promptText = service._aduPromptText();
   ok(promptText.indexOf("专用工具优先") !== -1, "提示写明专用工具优先");
